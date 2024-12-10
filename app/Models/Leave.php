@@ -19,7 +19,7 @@ class Leave extends Model
     ];
 
     /**
-     * Relationship to Employee
+     * Define relationship to Employee
      */
     public function employee()
     {

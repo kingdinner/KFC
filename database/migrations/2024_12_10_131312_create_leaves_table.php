@@ -1,44 +1,38 @@
 <?php
 
-namespace Database\Seeders;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Database\Seeder;
-use App\Models\Leave;
-use App\Models\Employee;
-use Faker\Factory as Faker;
-
-class LeaveSeeder extends Seeder
+return new class extends Migration
 {
     /**
-     * Run the database seeds.
+     * Run the migrations.
      */
-    public function run(): void
+    public function up(): void
     {
-        $faker = Faker::create();
+        Schema::create('leaves', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('employee_id'); // Foreign key to employees
+            $table->date('date_applied');             // Date when leave is applied
+            $table->string('duration');               // Leave duration (e.g., "2 days")
+            $table->string('reporting_manager');      // Name of reporting manager
+            $table->text('reasons')->nullable();      // Leave reason (nullable)
+            $table->string('status')->default('Pending'); // Leave status
+            $table->timestamps();
 
-        // Get all employees
-        $employees = Employee::all();
-
-        // Ensure employees exist before seeding
-        if ($employees->isEmpty()) {
-            $this->command->info('No employees found. Please seed the employees first.');
-            return;
-        }
-
-        // Generate leave records
-        foreach ($employees as $employee) {
-            for ($i = 0; $i < rand(1, 3); $i++) {  // Each employee gets 1-3 leave records
-                Leave::create([
-                    'employee_id' => $employee->id,
-                    'date_applied' => $faker->dateTimeBetween('-1 year', 'now'),
-                    'duration' => rand(1, 14) . ' days',
-                    'reporting_manager' => $faker->name,
-                    'reasons' => $faker->sentence,
-                    'status' => $faker->randomElement(['Approved', 'Rejected']), // Random status
-                ]);
-            }
-        }
-
-        $this->command->info('Leaves table seeded successfully.');
+            // Define foreign key constraint
+            $table->foreign('employee_id')
+                  ->references('id')->on('employees')
+                  ->onDelete('cascade');
+        });
     }
-}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('leaves');
+    }
+};

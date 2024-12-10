@@ -9,7 +9,7 @@ use App\Http\Controllers\API\DataManagement\StarStatusController;
 use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
-
+use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 
 
 // Authentication Route
@@ -43,8 +43,18 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/users/{id}', [SystemManagementController::class, 'findEmployeeById']);
     Route::put('/users/{userid}/assign-roles', [SystemManagementController::class, 'assignOrEditRoles']);
     
+    // Approval
     Route::post('/leaves/{leave}/action', [LeaveController::class, 'handleLeaveAction']);
+    Route::post('/borrow-team-members/{borrowTeamMember}/action', [BorrowTeamMemberController::class, 'handleBorrowRequestAction']);
+
+    //leaves
     Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
+    Route::get('/leaves', [LeaveController::class, 'index']);
+
+    // borrow
+    Route::get('/borrow-team-members', [BorrowTeamMemberController::class, 'index']);
+    Route::post('/borrow-team-members/request', [BorrowTeamMemberController::class, 'createBorrowRequest']);
+
     // delete account
     Route::middleware(['check.permission:Add/Edit User,delete'])->delete('/account/{id}/soft-delete', [SystemManagementController::class, 'softDelete']);
     Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [SystemManagementController::class, 'restore']);

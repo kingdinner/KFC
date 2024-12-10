@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             EmployeeSeeder::class,
             StoreSeeder::class,
             StoreEmployeeSeeder::class,
+            BorrowTeamMemberSeeder::class,
             LeaveSeeder::class,
         ]);
     }
