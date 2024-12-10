@@ -14,14 +14,19 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('authentication_account_id');
-            $table->string('fullname');
-            $table->text('address');
-            $table->string('contact_number');
-            $table->string('job_position');
-            $table->softDeletes();  // Soft delete column
+            $table->string('firstname');
+            $table->string('lastname');
+            $table->string('email_address')->unique();
+            $table->date('dob')->nullable();
+            $table->string('nationality')->nullable();
+            $table->text('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('zipcode')->nullable();
+            $table->softDeletes();
             $table->timestamps();
 
-            // Foreign key linking to the authentication_accounts table
+            // Foreign key linking
             $table->foreign('authentication_account_id')
                   ->references('id')
                   ->on('authentication_accounts')

@@ -18,6 +18,9 @@ class DatabaseSeeder extends Seeder
             UsersTableSeeder::class,
             HRRulesAndFAQsSeeder::class,
             EmployeeSeeder::class,
+            StoreSeeder::class,
+            StoreEmployeeSeeder::class,
+            LeaveSeeder::class,
         ]);
     }
 }

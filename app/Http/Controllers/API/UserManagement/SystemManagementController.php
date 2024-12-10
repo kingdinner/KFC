@@ -230,40 +230,81 @@ class SystemManagementController extends Controller
 
     public function show(Request $request)
     {
-        // Set the number of items per page (optional, you can make it dynamic)
-        $perPage = $request->input('per_page', 10); // default to 10 items per page
-
-        // Use pagination with the specified items per page
-        $userAccounts = AuthenticationAccount::with(['employee', 'roles'])->paginate($perPage);
-
-        // Map the data to structure it in a readable format
-        $employeesData = $userAccounts->getCollection()->map(function ($account) {
-            return [
-                'account' => [
-                    'id' => $account->id,
-                    'email' => $account->email,
-                    'is_active' => $account->is_active,
-                    'roles' => $account->roles->pluck('name'), // Include roles as a list of role names
-                    'employee_details' => $account->employee ? [
-                        'employee_id' => $account->employee->id,
-                        'fullname' => $account->employee->fullname,
-                        'address' => $account->employee->address,
-                        'contact_number' => $account->employee->contact_number,
-                        'job_position' => $account->employee->job_position,
-                    ] : null,
-                ],
-            ];
-        });
-
-        // Replace the original data with the mapped data
-        $userAccounts->setCollection($employeesData);
-
-        // Return paginated response with all employees and associated account data
+        // Set items per page, defaulting to 10
+        $perPage = $request->input('per_page', 10);
+    
+        // Paginate authentication accounts with relationships
+        $userAccounts = AuthenticationAccount::with([
+            'employee.stores:id,name,location,store_code',
+            'roles:name'
+        ])->paginate($perPage);
+    
+        // Format and return the response
         return response()->json([
             'success' => true,
-            'data' => $userAccounts
+            'data' => $userAccounts->map(function ($account) {
+                return [
+                    'account_id' => $account->id,
+                    'email' => $account->email,
+                    'is_active' => $account->is_active,
+                    'roles' => $account->roles->pluck('name'),
+                    'employee' => optional($account->employee)->only([
+                        'id', 'firstname', 'lastname', 'email_address', 
+                        'address', 'city', 'state', 'zipcode'
+                    ]),
+                    'stores' => optional($account->employee)->stores->map(function ($store) {
+                        return $store->only(['id', 'name', 'location', 'store_code']);
+                    }),
+                ];
+            }),
         ]);
     }
+    
+    public function findEmployeeById(Request $request, $id)
+    {
+        // Fetch the account with related data
+        $account = AuthenticationAccount::with([
+            'employee.stores:id,name,location,store_code',
+            'employee.leaves:id,employee_id,date_applied,duration,reporting_manager,reasons,status',
+            'roles:name'
+        ])->whereHas('employee', function ($query) use ($id) {
+            $query->where('id', $id);
+        })->first();
+
+        // Handle employee not found
+        if (!$account) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        }
+
+        // Format and return employee details
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'account_id' => $account->id,
+                'email' => $account->email,
+                'is_active' => $account->is_active,
+                'roles' => $account->roles->pluck('name'),
+                'employee' => optional($account->employee)->only([
+                    'id', 'firstname', 'lastname', 'email_address', 
+                    'address', 'city', 'state', 'zipcode'
+                ]),
+                'stores' => optional($account->employee)->stores->map(function ($store) {
+                    return $store->only(['id', 'name', 'location', 'store_code']);
+                }),
+                'leaves' => optional($account->employee)->leaves->map(function ($leave) {
+                    return $leave->only([
+                        'id','date_applied', 'duration', 'reporting_manager', 'reasons', 'status'
+                    ]);
+                }),
+            ],
+        ]);
+    }
+
+
+
 
     /**
      * Soft delete an account.
@@ -315,8 +356,6 @@ class SystemManagementController extends Controller
         ]);
     }
 
-
-
     public function deleteRole(Request $request)
     {
         $request->validate([
@@ -347,44 +386,47 @@ class SystemManagementController extends Controller
             'message' => 'Role has been successfully deleted.'
         ]);
     }
-    public function createAccountForEmployee(Request $request)
-    {
-        $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'email' => 'required|email|unique:authentication_accounts,email',
-            'role' => 'required|exists:roles,name',
-        ]);
 
-        // Find the employee by ID
-        $employee = Employee::findOrFail($request->employee_id);
 
-        // Check if the employee already has an account
-        if ($employee->authenticationAccount) {
-            return response()->json([
-                'message' => 'This employee already has an account.'
-            ], 409);
-        }
 
-        // Generate a temporary password
-        $temporaryPassword = Str::random(12);
+    //change this to sync upon receive API
+    // public function createAccountForEmployee(Request $request)
+    // {
+    //     $request->validate([
+    //         'employee_id' => 'required|exists:employees,id',
+    //         'email' => 'required|email|unique:authentication_accounts,email',
+    //         'role' => 'required|exists:roles,name',
+    //     ]);
 
-        // Create a new account for the employee
-        $account = AuthenticationAccount::create([
-            'employee_id' => $employee->id,
-            'email' => $request->email,
-            'password' => Hash::make($temporaryPassword),
-        ]);
+    //     // Find the employee by ID
+    //     $employee = Employee::findOrFail($request->employee_id);
 
-        // Assign the role to the account
-        $account->assignRole($request->role);
+    //     // Check if the employee already has an account
+    //     if ($employee->authenticationAccount) {
+    //         return response()->json([
+    //             'message' => 'This employee already has an account.'
+    //         ], 409);
+    //     }
 
-        // Send account creation email with temporary password
-        Mail::to($account->email)->send(new AccountCreatedMail($account, $temporaryPassword));
+    //     // Generate a temporary password
+    //     $temporaryPassword = Str::random(12);
 
-        return response()->json([
-            'message' => 'Account successfully created and email sent to employee.',
-            'account' => $account
-        ]);
-    }
-    
+    //     // Create a new account for the employee
+    //     $account = AuthenticationAccount::create([
+    //         'employee_id' => $employee->id,
+    //         'email' => $request->email,
+    //         'password' => Hash::make($temporaryPassword),
+    //     ]);
+
+    //     // Assign the role to the account
+    //     $account->assignRole($request->role);
+
+    //     // Send account creation email with temporary password
+    //     Mail::to($account->email)->send(new AccountCreatedMail($account, $temporaryPassword));
+
+    //     return response()->json([
+    //         'message' => 'Account successfully created and email sent to employee.',
+    //         'account' => $account
+    //     ]);
+    // }
 }

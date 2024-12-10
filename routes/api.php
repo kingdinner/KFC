@@ -8,12 +8,14 @@ use App\Http\Controllers\API\DataManagement\PayRateController;
 use App\Http\Controllers\API\DataManagement\StarStatusController;
 use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
+use App\Http\Controllers\API\UserManagement\LeaveController;
+
 
 
 // Authentication Route
 Route::post('login', [AuthController::class, 'login']);
 
-Route::get('/landing-page', [HRFAQController::class, 'landingPage']);
+Route::get('landing-page', [HRFAQController::class, 'landingPage']);
 
 Route::middleware('auth:api')->group(function () {
 
@@ -38,8 +40,11 @@ Route::middleware('auth:api')->group(function () {
     // View User - Read action
 
     Route::get('/users', [SystemManagementController::class, 'show']);
+    Route::get('/users/{id}', [SystemManagementController::class, 'findEmployeeById']);
     Route::put('/users/{userid}/assign-roles', [SystemManagementController::class, 'assignOrEditRoles']);
-  
+    
+    Route::post('/leaves/{leave}/action', [LeaveController::class, 'handleLeaveAction']);
+    Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
     // delete account
     Route::middleware(['check.permission:Add/Edit User,delete'])->delete('/account/{id}/soft-delete', [SystemManagementController::class, 'softDelete']);
     Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [SystemManagementController::class, 'restore']);
