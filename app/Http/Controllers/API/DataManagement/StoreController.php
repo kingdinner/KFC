@@ -49,7 +49,7 @@ class StoreController extends Controller
             'name' => 'required|string|max:255',
             'cost_center' => 'required|string|max:255',
             'asset_type' => 'required|string|max:255',
-            'store_code' => 'required|string|max:255|unique:stores,store_code,' . $store->id,
+            'store_code' => 'required|string|max:255|unique:stores,store_code,' . ($store->id ?? 'null'), //Added Fallbacks
         ]);
 
         $store->update($request->all());

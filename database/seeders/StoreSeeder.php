@@ -19,8 +19,6 @@ class StoreSeeder extends Seeder
         for ($i = 0; $i < 10; $i++) {
             Store::create([
                 'name' => $faker->company,
-                'location' => $faker->address,
-                'description' => $faker->catchPhrase,
                 'cost_center' => 'CC-' . $faker->randomNumber(5, true),
                 'asset_type' => $faker->randomElement(['Retail', 'Warehouse', 'Office']),
                 'store_code' => strtoupper($faker->bothify('STR-####')),

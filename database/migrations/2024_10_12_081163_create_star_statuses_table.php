@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('star_statuses', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->integer('status_level');
+            $table->unsignedBigInteger('store_employee_id');
+            $table->string('name');
+            $table->text('reason')->nullable();
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('store_employee_id')->references('id')->on('store_employees');
         });
+        
         
     }
 

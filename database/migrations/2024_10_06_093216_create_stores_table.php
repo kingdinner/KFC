@@ -14,8 +14,6 @@ return new class extends Migration
         Schema::create('stores', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->text('location');
-            $table->text('description')->nullable();
             $table->string('cost_center');
             $table->string('asset_type');
             $table->string('store_code')->unique();
