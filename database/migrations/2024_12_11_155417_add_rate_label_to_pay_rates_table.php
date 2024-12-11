@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pay_rates', function (Blueprint $table) {
-            $table->id();
-            $table->string('position');
-            $table->decimal('hourly_rate', 8, 2);
-            $table->timestamps();
+        Schema::table('pay_rates', function (Blueprint $table) {
+            $table->string('rate_label')->nullable();
         });
-        
     }
 
     /**
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pay_rates');
+        Schema::table('pay_rates', function (Blueprint $table) {
+            $table->dropColumn('rate_label');
+        });
     }
 };
