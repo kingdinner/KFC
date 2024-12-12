@@ -10,33 +10,71 @@ services:
     working_dir: /var/www
     volumes:
       - .:/var/www
+      - ./storage:/var/www/storage
+      - ./bootstrap/cache:/var/www/bootstrap/cache
     ports:
       - "8000:8000"
-    networks:
-      - laravel_network
     environment:
       - APP_ENV=local
       - APP_DEBUG=true
       - APP_KEY=base64:your_key_here
+      - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=laravel
-      - DB_USERNAME=laravel_user
-      - DB_PASSWORD=laravel_password
+      - DB_DATABASE=labormanual
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    depends_on:
+      - mysql
+      - mailpit
+    networks:
+      - laravel_network
 
   mysql:
     image: mysql:8.0
     container_name: mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel_user
-      MYSQL_PASSWORD: laravel_password
-      MYSQL_ROOT_PASSWORD: root_password
+      - MYSQL_DATABASE=labormanual
+      - MYSQL_ROOT_PASSWORD=root # Correct way to set root password
+      - MYSQL_USER=labormanagement # Regular user, not root
+      - MYSQL_PASSWORD=labormanagement_password # Password for the regular user
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - laravel_network
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - laravel_network
+
+  composer:
+    image: composer:latest
+    container_name: composer
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    entrypoint: [ "composer" ]
+    networks:
+      - laravel_network
+
+  artisan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: artisan
+    working_dir: /var/www
+    entrypoint: [ "php", "artisan" ]
+    depends_on:
+      - laravel-app
     networks:
       - laravel_network
 
