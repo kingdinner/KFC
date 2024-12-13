@@ -40,7 +40,7 @@ class StarStatusController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'store_employee_id' => 'required|exists:store_employee,id',
+            'store_employee_id' => 'required|exists:store_employees,id',
             'name' => 'required|string|max:255',
             'reason' => 'nullable|string',
             'status' => 'required|in:ACTIVE,INACTIVE',
@@ -72,10 +72,10 @@ class StarStatusController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'store_employee_id' => 'required|exists:store_employees,id',
             'name' => 'required|string|max:255',
             'reason' => 'nullable|string',
-            'status_level' => 'required|integer',
+            'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
         try {
@@ -126,14 +126,20 @@ class StarStatusController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
-    public function search(Request $request)
+    public function search($status)
     {
-        $query = $request->input('query');
+        $status = trim($status);
+
+        if (empty($status)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status name parameter is required'
+            ], 400);
+        }
 
         try {
-            // Search by name or reason
-            $results = StarStatus::where('name', 'like', "%$query%")
-                ->orWhere('reason', 'like', "%$query%")
+            $results = StarStatus::where('name', 'like', "%$status%")
+                ->orWhere('reason', 'like', "%$status%")
                 ->get();
 
             return response()->json([

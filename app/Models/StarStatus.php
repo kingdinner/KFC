@@ -13,7 +13,7 @@ class StarStatus extends Model
     protected $table = 'star_statuses';
 
     protected $fillable = [
-        'user_id', 
+        'store_employee_id', 
         'name', 
         'reason', 
         'status'
