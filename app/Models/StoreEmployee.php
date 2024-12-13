@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\PayRate;
 use App\Models\StarStatus;
+use App\Models\Employee;
 
 class StoreEmployee extends Model
 {
@@ -28,5 +29,10 @@ class StoreEmployee extends Model
     public function starStatuses()
     {
         return $this->hasMany(StarStatus::class);
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 }
