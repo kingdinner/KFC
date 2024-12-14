@@ -59,5 +59,71 @@ php artisan cache:clear
 php artisan migrate:rollback
 Troubleshooting Tips
 
+
+### Setting Up Proxy in React (For Development Only)
+Parameters:
+route: The specific route in the Laravel backend that you want to call (e.g., users/register, stores).
+payload: The data (usually a JSON object) to send to the route.
+
+Ensure your .env file has the correct APP_URL value for your Laravel backend:
+- APP_URL=http://127.0.0.1:8000
+
+## Configure Proxy in React
+To make requests to the Laravel backend in development, add the following to your package.json file:
+```
+"proxy": "http://127.0.0.1:8000"
+```
+
+## Create a Proxy Request Utility
+In your React project, create a new utility function to send requests through the /api/proxy endpoint.
+```
+const proxyRequest = async (route, payload) => {
+    const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ route, payload }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Proxy request failed');
+    }
+
+    return response.json();
+};
+
+export default proxyRequest;
+```
+
+## Usage Example
+```
+import proxyRequest from './utils/proxyRequest';
+
+const loginUser = async () => {
+    try {
+        const data = await proxyRequest('login', {
+            employee_id: '2024-1023'
+            password: 'password',
+        });
+        console.log('Login:', data);
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+
+createUser();
+```
+
+## Example Request
+```
+{
+  "route": "login",
+  "payload": {
+    employee_id: '2024-1023'
+    password: 'password',
+  }
+}
+```
 License
 This project is licensed under the MIT License. See the LICENSE file for more details.

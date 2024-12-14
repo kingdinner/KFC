@@ -3,6 +3,9 @@
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\LandingPage\HRFAQController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\API\DataManagement\StoreController;
 use App\Http\Controllers\API\DataManagement\PayRateController;
 use App\Http\Controllers\API\DataManagement\StarStatusController;
@@ -92,6 +95,20 @@ Route::middleware('auth:api')->group(function () {
     });
 });
 
+Route::post('/proxy', function (Request $request) {
+    $route = $request->input('route');
+    $payload = $request->input('payload', []);
+
+    $method = strtoupper($request->method());
+
+    $baseUrl = env('APP_URL');
+    $fullUrl = rtrim($baseUrl) . '/api/' . $route;
+
+    $response = Http::withHeaders($request->headers->all())
+    ->$method($fullUrl, $payload);
+
+    return response()->json($response->json(), $response->status());
+});
 
 Route::fallback(function(){
     return response()->json([
@@ -100,3 +117,5 @@ Route::fallback(function(){
     ], 404);
 });
 
+
+    
