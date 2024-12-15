@@ -88,7 +88,7 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/', [StarStatusController::class, 'store']);
         Route::put('/{id}', [StarStatusController::class, 'update']);
         Route::delete('/{id}', [StarStatusController::class, 'destroy']);
-        Route::get('/search', [StarStatusController::class, 'search']);
+        Route::get('/search/{status}', [StarStatusController::class, 'search']);
     });
 });
 
