@@ -10,14 +10,10 @@ use Faker\Factory as Faker;
 
 class BorrowTeamMemberSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $faker = Faker::create();
 
-        // Get all employees and stores
         $employees = Employee::all();
         $stores = Store::all();
 
@@ -34,6 +30,8 @@ class BorrowTeamMemberSeeder extends Seeder
                 'employee_id' => $employee->id,
                 'borrowed_store_id' => $borrowedStore->id,
                 'borrowed_date' => $faker->dateTimeBetween('-1 year', 'now'),
+                'borrowed_time' => $faker->time(),
+                'borrow_type' => $faker->randomElement(['swap', 'borrow']),
                 'skill_level' => $faker->randomElement(['Beginner', 'Intermediate', 'Advanced']),
                 'transferred_store_id' => $transferredStore->id,
                 'transferred_date' => $faker->optional()->dateTimeBetween('now', '+6 months'),
