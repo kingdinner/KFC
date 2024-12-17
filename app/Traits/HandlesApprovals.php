@@ -27,11 +27,13 @@ trait HandlesApprovals
         // Validate the action input
         $validated = $request->validate([
             'action' => 'required|string|in:Approve,Reject',
+            'reason' => 'required_if:action,Reject|string|max:255'
         ]);
 
-        // Update the model status
+        // Update the model status and reason if rejected
         $model->update([
             'status' => $validated['action'] === 'Approve' ? 'Approved' : 'Rejected',
+            'reason' => $validated['action'] === 'Reject' ? $validated['reason'] : null,
         ]);
 
         return response()->json([

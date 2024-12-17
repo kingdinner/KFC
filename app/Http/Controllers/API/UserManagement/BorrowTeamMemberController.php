@@ -19,6 +19,11 @@ class BorrowTeamMemberController extends Controller
         return $this->handleApproval($request, $borrowTeamMember, 'Borrow Team Member');
     }
 
+    public function handleSwapRequestAction(Request $request, BorrowTeamMember $swapTeamMember)
+    {
+        return $this->handleApproval($request, $swapTeamMember, 'Swap Team Member');
+    }
+
     public function swapIndex(Request $request)
     {
         return $this->index($request, 'swap');
