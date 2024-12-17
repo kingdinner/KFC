@@ -46,6 +46,7 @@ Route::middleware('auth:api')->group(function () {
     // Approval
     Route::post('/leaves/{leave}/action', [LeaveController::class, 'handleLeaveAction']);
     Route::post('/borrow-team-members/{borrowTeamMember}/action', [BorrowTeamMemberController::class, 'handleBorrowRequestAction']);
+    Route::post('/swap-team-members/{swapTeamMember}/action', [BorrowTeamMemberController::class, 'handleSwapRequestAction']);
 
     //leaves
     Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
