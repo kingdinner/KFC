@@ -51,8 +51,12 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
     Route::get('/leaves', [LeaveController::class, 'index']);
 
-    // borrow
-    Route::get('/borrow-team-members', [BorrowTeamMemberController::class, 'index']);
+    //borrow and swap
+    Route::controller(BorrowTeamMemberController::class)->group(function () {
+        Route::get('/swap-team-members', 'swapIndex');
+        Route::get('/borrow-team-members', 'borrowIndex');
+    });
+    // Route::get('/borrow-team-members', [BorrowTeamMemberController::class, 'index']);
     Route::post('/borrow-team-members/request', [BorrowTeamMemberController::class, 'createBorrowRequest']);
 
     // delete account

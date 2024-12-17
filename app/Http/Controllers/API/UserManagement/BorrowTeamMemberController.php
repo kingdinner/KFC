@@ -18,10 +18,20 @@ class BorrowTeamMemberController extends Controller
     {
         return $this->handleApproval($request, $borrowTeamMember, 'Borrow Team Member');
     }
+
+    public function swapIndex(Request $request)
+    {
+        return $this->index($request, 'swap');
+    }
+
+    public function borrowIndex(Request $request)
+    {
+        return $this->index($request, 'borrow');
+    }
     /**
-     * Display all borrowed team members with relationships.
+     * Display all borrowed team members with relationships based on endpoint.
      */
-    public function index(Request $request)
+    public function index(Request $request, $borrowType)
     {
         // Fetch borrowed team members with pagination
         $perPage = $request->input('per_page', 10);  // Default to 10 records per page
@@ -29,7 +39,9 @@ class BorrowTeamMemberController extends Controller
             'employee:id,firstname,lastname',
             'borrowedStore:id,name',
             'transferredStore:id,name',
-        ])->paginate($perPage);
+        ])
+        ->where('borrow_type', $borrowType)
+        ->paginate($perPage);
 
         // Format and return paginated response
         return response()->json([
@@ -51,7 +63,9 @@ class BorrowTeamMemberController extends Controller
             'employee_id' => 'required|exists:employees,id',
             'borrowed_store_id' => 'required|exists:stores,id',
             'borrowed_date' => 'required|date|after_or_equal:today',
-            'skill_level' => 'required|string|in:Beginner,Intermediate,Advanced',
+            'borrowed_time' => 'required|date_format:H:i',
+            'borrow_type' => 'required|in:swap,borrow',
+            'skill_level' => 'required|string',
             'reason' => 'required|string|max:255',
         ]);
 
@@ -60,14 +74,16 @@ class BorrowTeamMemberController extends Controller
             'employee_id' => $validated['employee_id'],
             'borrowed_store_id' => $validated['borrowed_store_id'],
             'borrowed_date' => $validated['borrowed_date'],
+            'borrowed_time' => $validated['borrowed_time'],
+            'borrow_type' => $validated['borrow_type'],
             'skill_level' => $validated['skill_level'],
-            'status' => 'Pending',  // Default status
+            'status' => 'Pending', 
             'reason' => $validated['reason'],
         ]);
 
         return response()->json([
             'message' => 'Borrow request submitted successfully.',
-            'borrow_request' => $this->formatBorrowData($borrowRequest),
+            'borrow_request' => $borrowRequest,
         ], 201);
     }
 
@@ -81,6 +97,8 @@ class BorrowTeamMemberController extends Controller
             'employee' => $this->getEmployeeFullName($member),
             'borrowed_store' => optional($member->borrowedStore)->name,
             'borrowed_date' => $member->borrowed_date,
+            'borrowed_time' => $member->borrowed_time,
+            'borrow_type' => $member->borrow_type,
             'skill_level' => $member->skill_level,
             'transferred_store' => optional($member->transferredStore)->name,
             'transferred_date' => $member->transferred_date,

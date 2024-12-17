@@ -6,13 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class BorrowTeamMember extends Model
-{
+  {
     use HasFactory;
 
     protected $fillable = [
         'employee_id',
         'borrowed_store_id',
         'borrowed_date',
+        'borrowed_time',
+        'borrow_type',
         'skill_level',
         'transferred_store_id',
         'transferred_date',
