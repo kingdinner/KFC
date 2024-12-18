@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\DataManagement\StoreController;
 use App\Http\Controllers\API\DataManagement\PayRateController;
 use App\Http\Controllers\API\DataManagement\StarStatusController;
+use App\Http\Controllers\API\TmarReport\TmarSummaryController;
 use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
@@ -94,6 +95,12 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/{id}', [StarStatusController::class, 'update']);
         Route::delete('/{id}', [StarStatusController::class, 'destroy']);
         Route::get('/search/{status}', [StarStatusController::class, 'search']);
+    });
+
+    // TMAR Reports Routes
+
+    Route::prefix('tmar-summary')->group(function () {
+        Route::get('/', [TmarSummaryController::class, 'index']);
     });
 });
 
