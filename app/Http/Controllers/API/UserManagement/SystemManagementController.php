@@ -235,7 +235,7 @@ class SystemManagementController extends Controller
     
         // Paginate authentication accounts with relationships
         $userAccounts = AuthenticationAccount::with([
-            'employee.stores:id,name,location,store_code',
+            'employee.stores:id,name,store_code',
             'roles:name'
         ])->paginate($perPage);
     
@@ -253,7 +253,7 @@ class SystemManagementController extends Controller
                         'address', 'city', 'state', 'zipcode'
                     ]),
                     'stores' => optional($account->employee)->stores->map(function ($store) {
-                        return $store->only(['id', 'name', 'location', 'store_code']);
+                        return $store->only(['id', 'name', 'store_code']);
                     }),
                 ];
             }),
@@ -264,7 +264,7 @@ class SystemManagementController extends Controller
     {
         // Fetch the account with related data
         $account = AuthenticationAccount::with([
-            'employee.stores:id,name,location,store_code',
+            'employee.stores:id,name,store_code',
             'employee.leaves:id,employee_id,date_applied,duration,reporting_manager,reasons,status',
             'roles:name'
         ])->whereHas('employee', function ($query) use ($id) {
@@ -292,7 +292,7 @@ class SystemManagementController extends Controller
                     'address', 'city', 'state', 'zipcode'
                 ]),
                 'stores' => optional($account->employee)->stores->map(function ($store) {
-                    return $store->only(['id', 'name', 'location', 'store_code']);
+                    return $store->only(['id', 'name', 'store_code']);
                 }),
                 'leaves' => optional($account->employee)->leaves->map(function ($leave) {
                     return $leave->only([
