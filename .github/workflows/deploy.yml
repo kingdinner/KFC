@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Deploy to AWS EC2
 
 on:
   push:
@@ -6,31 +6,55 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build and push Laravel app image
+    - name: Set Up SSH
       run: |
-        # Build the Laravel app Docker image
-        docker build -t kingdinner1/laravel-app:latest -f Dockerfile .
-        
-        # Push the Laravel app image to Docker Hub
-        docker push kingdinner1/laravel-app:latest
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_KEY }}" > ~/.ssh/aws_key.pem
+        chmod 400 ~/.ssh/aws_key.pem
 
-    - name: Build and push PostgreSQL image (optional)
+    - name: Deploy to EC2
       run: |
-        # Build the PostgreSQL Docker image
-        docker build -t kingdinner1/postgres:latest -f postgres.Dockerfile .
-        
-        # Push the PostgreSQL image to Docker Hub
-        docker push kingdinner1/postgres:latest
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/aws_key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+        # Update the system and install Docker
+        sudo apt-get update && sudo apt-get install -y docker.io
+
+        # Pull the latest Docker images
+        docker pull postgres:13
+        docker pull kingdinner1/laravel-app:latest
+
+        # Stop and remove existing containers
+        docker stop postgres || true
+        docker rm postgres || true
+        docker stop laravel-app || true
+        docker rm laravel-app || true
+
+        # Create a Docker network
+        docker network create app_network || true
+
+        # Run the PostgreSQL container
+        docker run -d \
+          --name postgres \
+          --network app_network \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=root \
+          -e POSTGRES_DB=labormanual \
+          -p 5432:5432 \
+          postgres:13
+
+        # Run the Laravel app container
+        docker run -d \
+          --name laravel-app \
+          --network app_network \
+          -e DB_CONNECTION=pgsql \
+          -e DB_HOST=postgres \
+          -e DB_PORT=5432 \
+          -e DB_DATABASE=labormanual \
+          -e DB_USERNAME=postgres \
+          -e DB_PASSWORD=root \
+          -p 80:8000 \
+          kingdinner1/laravel-app:latest
+        EOF
