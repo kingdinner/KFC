@@ -10,11 +10,15 @@ use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
+use App\Http\Controllers\API\ProxyController;
+
+// Experimental route
+Route::match(['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], '/proxy', [ProxyController::class, 'handle']);
 
 
 // Authentication Route
 Route::post('login', [AuthController::class, 'login']);
-
+            
 Route::get('landing-page', [HRFAQController::class, 'landingPage']);
 
 Route::middleware('auth:api')->group(function () {
@@ -97,11 +101,9 @@ Route::middleware('auth:api')->group(function () {
     });
 });
 
-
 Route::fallback(function(){
     return response()->json([
         'status' => 'error',
         'message' => 'The requested route does not exist.'
     ], 404);
 });
-
