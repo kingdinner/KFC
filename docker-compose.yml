@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   laravel-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: laravel-app
     restart: unless-stopped
     working_dir: /var/www
@@ -15,66 +13,40 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
-      - APP_KEY=base64:your_key_here
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_DATABASE=labormanual
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      APP_ENV: local
+      APP_DEBUG: true
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: labormanual
+      DB_USERNAME: postgres
+      DB_PASSWORD: root
     depends_on:
-      - mysql
-      - mailpit
+      - postgres
     networks:
       - laravel_network
+    command: >
+      sh -c "if [ ! -f .env ]; then cp .env.example .env; fi &&
+            chmod 644 .env &&
+            chown www-data:www-data .env &&
+            php artisan key:generate &&
+            php artisan config:cache &&
+            php artisan migrate:refresh --force &&
+            php artisan db:seed --force &&
+            php artisan serve --host=0.0.0.0 --port=8000"
 
-  mysql:
-    image: mysql:8.0
-    container_name: mysql
+  postgres:
+    image: postgres:13
+    container_name: postgres
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=labormanual
-      - MYSQL_ROOT_PASSWORD=root # Correct way to set root password
-      - MYSQL_USER=labormanagement # Regular user, not root
-      - MYSQL_PASSWORD=labormanagement_password # Password for the regular user
+      POSTGRES_DB: labormanual
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
     ports:
-      - "3307:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - laravel_network
-
-  mailpit:
-    image: axllent/mailpit
-    container_name: mailpit
-    restart: unless-stopped
-    ports:
-      - "1025:1025"
-      - "8025:8025"
-    networks:
-      - laravel_network
-
-  composer:
-    image: composer:latest
-    container_name: composer
-    working_dir: /var/www
-    volumes:
-      - .:/var/www
-    entrypoint: [ "composer" ]
-    networks:
-      - laravel_network
-
-  artisan:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: artisan
-    working_dir: /var/www
-    entrypoint: [ "php", "artisan" ]
-    depends_on:
-      - laravel-app
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - laravel_network
 
@@ -83,4 +55,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  postgres_data:
