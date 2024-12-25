@@ -1,63 +1,92 @@
 # Laravel Project Setup Guide
-This guide will help you set up the Laravel project using PHP 8.3.10, including migrations, seeding the database, and configuring API authentication using Laravel Passport. A Postman collection is also included for API testing.
 
-## System Requirements
-PHP 8.3.10
-Composer
-MySQL (or another compatible database)
-Laravel Framework 10.x or higher
+# System Requirements
+# - PHP 8.3.10
+# - Composer
+# - PostgreSQL
+# - Laravel Framework 10.x or higher
+# - Docker (optional, for containerized development)
 
-## Installation Steps
-1. Clone the Repository
+# Installation Steps
+
+# 1. Clone the Repository
 git clone <repository_url>
 cd <project_directory>
-2. Install Dependencies
+
+# 2. Install Dependencies
 composer install
-3. Environment Configuration
-Copy the .env.example file and rename it to .env.
-Configure database details in the .env file:
-dotenv
-Copy code
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=your_database_name
-DB_USERNAME=your_database_user
-DB_PASSWORD=your_database_password
-Running Migrations and Seeding Data
-1. Migrate the Database
+
+# 3. Environment Configuration
+cp .env.example .env
+# Edit the .env file for PostgreSQL settings:
+# DB_CONNECTION=pgsql
+# DB_HOST=127.0.0.1
+# DB_PORT=5432
+# DB_DATABASE=your_database_name
+# DB_USERNAME=your_database_user
+# DB_PASSWORD=your_database_password
+
+# Running Migrations and Seeding Data
+
+# 1. Migrate the Database
 php artisan migrate
-2. Seed the Database
+
+# 2. Seed the Database
 php artisan db:seed
-Setting Up Laravel Passport
-1. Install Passport
+
+# Setting Up Laravel Passport
+
+# 1. Install Passport
 php artisan passport:install
-This will generate client_id and client_secret values. Add these to your .env file:
-.env
-PASSPORT_CLIENT_ID=your_client_id
-PASSPORT_CLIENT_SECRET=your_client_secret
 
-## Running the Application
+# Add the following generated client_id and client_secret values to the .env file:
+# PASSPORT_PERSONAL_ACCESS_CLIENT_ID=1
+# PASSPORT_PERSONAL_ACCESS_CLIENT_SECRET=your_client_secret
+
+# For Docker users, append or overwrite these values inside the Laravel container:
+docker exec -it laravel-app bash -c "echo 'PASSPORT_PERSONAL_ACCESS_CLIENT_ID=1' >> .env"
+docker exec -it laravel-app bash -c "echo 'PASSPORT_PERSONAL_ACCESS_CLIENT_SECRET=your_client_secret' >> .env"
+
+# Verify the changes:
+docker exec -it laravel-app bash -c "cat .env | grep PASSPORT_PERSONAL_ACCESS_CLIENT"
+
+# Clear and cache configuration
+docker exec -it laravel-app php artisan config:clear
+docker exec -it laravel-app php artisan config:cache
+
+# Running the Application
+
+# 1. Using Laravel's Built-in Server
 php artisan serve
-Visit http://localhost:8000 in your browser.
+# Visit http://localhost:8000
 
-## Testing APIs with Postman
-Import the provided Postman collection (<Postman_Collection_File.json>).
-Use the environment variables for dynamic testing.
-Run API requests according to the collection routes.
-Useful Commands
+# 2. Using Docker
+docker-compose up -d
+# Access the application at http://localhost:8000
 
-### Run Development Server:
+# Testing APIs with Postman
+
+# 1. Import the provided Postman collection (<Postman_Collection_File.json>).
+# 2. Use the environment variables for dynamic testing.
+# 3. Run API requests according to the collection routes.
+
+# Useful Commands
+
+# Run Development Server
 php artisan serve
 
-### Clear Cache and Config:
+# Clear Cache and Config
 php artisan config:cache
 php artisan route:cache
 php artisan cache:clear
 
-### Rollback Migrations:
+# Rollback Migrations
 php artisan migrate:rollback
-Troubleshooting Tips
 
-License
-This project is licensed under the MIT License. See the LICENSE file for more details.
+# Troubleshooting Tips
+
+# Ensure the .env file is correctly configured and has appropriate permissions.
+# Verify the database connection using PostgreSQL client tools.
+# If using Docker, check container logs:
+docker logs laravel-app
+docker logs postgres
