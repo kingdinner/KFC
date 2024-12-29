@@ -59,4 +59,16 @@ class Employee extends Model
     {
         return $this->hasMany(BorrowTeamMember::class, 'employee_id');
     }
+
+    public function ratings()
+    {
+        return $this->hasManyThrough(
+            Ratings::class,
+            StoreEmployee::class,
+            'employee_id',
+            'store_employee_id',
+            'id',
+            'id' 
+        );
+    }
 }

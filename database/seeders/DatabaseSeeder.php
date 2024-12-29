@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             StarStatusSeeder::class,
             AvailabilitySeeder::class,
             TmarSummarySeeder::class,
+            RatingSeeder::class,
         ]);
     }
 }
