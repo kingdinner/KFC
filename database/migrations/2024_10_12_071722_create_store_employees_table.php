@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('employee_id');
             $table->date('start_date');
             $table->date('end_date')->nullable(); 
+            $table->string('status')->nullable(); 
             $table->timestamps();
 
             $table->foreign('store_id')->references('id')->on('stores')->onDelete('cascade');

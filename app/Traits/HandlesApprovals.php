@@ -3,6 +3,9 @@
 namespace App\Traits;
 
 use Illuminate\Http\Request;
+use App\Models\StoreEmployee;
+use App\Models\BorrowTeamMember;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 
 trait HandlesApprovals
@@ -36,9 +39,26 @@ trait HandlesApprovals
             'reason' => $validated['action'] === 'Reject' ? $validated['reason'] : null,
         ]);
 
+        if ($validated['action'] === 'Approve' && $model instanceof BorrowTeamMember) {
+            try {
+                $storeEmployee = StoreEmployee::create([
+                    'store_id' => $model->borrowed_store_id,
+                    'employee_id' => $model->employee_id,
+                    'start_date' => $model->borrowed_date,
+                    'end_date' => $model->borrowed_date,
+                    'status' => 'temporary',
+                ]);
+                Log::info('Created StoreEmployee:', $storeEmployee->toArray());
+            } catch (\Exception $e) {
+                Log::error('Error creating StoreEmployee:', ['error' => $e->getMessage()]);
+                return response()->json(['error' => 'Failed to create StoreEmployee entry.'], 500);
+            }
+        }
+
         return response()->json([
             'message' => "{$modelName} request has been {$model->status}.",
             'data' => $model
         ]);
     }
+
 }

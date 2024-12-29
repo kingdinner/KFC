@@ -37,7 +37,7 @@ class Employee extends Model
     public function stores()
     {
         return $this->belongsToMany(Store::class, 'store_employees')
-            ->withPivot('start_date', 'end_date')
+            ->withPivot('start_date', 'end_date', 'status')
             ->withTimestamps();
     }
 
@@ -54,5 +54,9 @@ class Employee extends Model
     public function leaves()
     {
         return $this->hasMany(Leave::class);
+    }
+    public function borrowedTeamMembers()
+    {
+        return $this->hasMany(BorrowTeamMember::class, 'employee_id');
     }
 }

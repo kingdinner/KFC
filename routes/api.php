@@ -10,95 +10,80 @@ use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
+use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
 
 // Experimental route
 Route::match(['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], '/proxy', [ProxyController::class, 'handle']);
 
-
 // Authentication Route
 Route::post('login', [AuthController::class, 'login']);
-            
+
 Route::get('landing-page', [HRFAQController::class, 'landingPage']);
 
 Route::middleware('auth:api')->group(function () {
 
     Route::post('tokenKeepAlive', [AuthController::class, 'tokenKeepAlive']);
     Route::post('logout', [AuthController::class, 'logout']);
-    
+
     Route::post('/faq', [HRFAQController::class, 'storeOrUpdateFAQ']);
     Route::post('/hr-rule', [HRFAQController::class, 'storeOrUpdateHRRule']);
 
-    // Add/Edit User - Create, Update, Delete actions
-    Route::post('/users/register', [SystemManagementController::class, 'store']);
-    Route::put('/users/update/{userid}', [SystemManagementController::class, 'update']);
+    // User Management
+    Route::apiResource('/users', SystemManagementController::class)->only(['store', 'update', 'destroy']);
     Route::put('/users/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
     Route::post('/users/change-password', [SystemManagementController::class, 'resetPassword']);
     Route::post('/users/forgot-password', [SystemManagementController::class, 'forgotPassword']);
-    
-    Route::post('/create-account', [SystemManagementController::class, 'createAccountForEmployee']);
-    
-    Route::get('/roles', [SystemManagementController::class, 'getRoles']);
-    Route::delete('/roles', [SystemManagementController::class, 'deleteRole']);
-    Route::match(['post', 'put'], '/roles/{id?}', [SystemManagementController::class, 'assignOrUpdate']);
-    // View User - Read action
-
-    Route::get('/users', [SystemManagementController::class, 'show']);
     Route::get('/users/{id}', [SystemManagementController::class, 'findEmployeeById']);
     Route::put('/users/{userid}/assign-roles', [SystemManagementController::class, 'assignOrEditRoles']);
-    
+
+    // Roles
+    Route::apiResource('/roles', SystemManagementController::class)->except(['create', 'edit']);
+
     // Approval
     Route::post('/leaves/{leave}/action', [LeaveController::class, 'handleLeaveAction']);
     Route::post('/borrow-team-members/{borrowTeamMember}/action', [BorrowTeamMemberController::class, 'handleBorrowRequestAction']);
     Route::post('/swap-team-members/{swapTeamMember}/action', [BorrowTeamMemberController::class, 'handleSwapRequestAction']);
 
-    //leaves
-    Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
-    Route::get('/leaves', [LeaveController::class, 'index']);
+    // Leaves
+    Route::apiResource('/leaves', LeaveController::class)->only(['store', 'index']);
 
-    //borrow and swap
+    // Availability
+    Route::apiResource('availability', AvailabilityController::class);
+
+    // Borrow and Swap
     Route::controller(BorrowTeamMemberController::class)->group(function () {
         Route::get('/swap-team-members', 'swapIndex');
         Route::get('/borrow-team-members', 'borrowIndex');
+        Route::post('/borrow-team-members/request', 'createBorrowRequest');
     });
-    // Route::get('/borrow-team-members', [BorrowTeamMemberController::class, 'index']);
-    Route::post('/borrow-team-members/request', [BorrowTeamMemberController::class, 'createBorrowRequest']);
 
-    // delete account
+    // Delete Account
     Route::middleware(['check.permission:Add/Edit User,delete'])->delete('/account/{id}/soft-delete', [SystemManagementController::class, 'softDelete']);
     Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [SystemManagementController::class, 'restore']);
 
+    // Permissions
+    Route::apiResource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
 
-    Route::get('/permissions', [PermissionController::class, 'index']);
-    Route::post('/permissions', [PermissionController::class, 'store']);
-    Route::put('/permissions/{permission}', [PermissionController::class, 'update']);
+    // Archive Users
+    Route::controller(SystemManagementController::class)->group(function () {
+        Route::post('/users/archive', 'archive');
+        Route::put('/users/archive/update/{userid}', 'updateArchive');
+        Route::delete('/users/archive/delete/{userid}', 'destroyArchive');
+    });
 
-    // Archive Users - Create, Update, Delete actions
-    Route::post('/users/archive', [SystemManagementController::class, 'archive']);
-    Route::put('/users/archive/update/{userid}', [SystemManagementController::class, 'updateArchive']);
-    Route::delete('/users/archive/delete/{userid}', [SystemManagementController::class, 'destroyArchive']);
-
-    //Store
-    Route::get('stores', [StoreController::class, 'index']);
-    Route::post('/stores', [StoreController::class, 'store']);
-    Route::get('stores/{store}', [StoreController::class, 'show']);
-    Route::put('stores/{store}', [StoreController::class, 'update']);
-    Route::delete('stores/{store}', [StoreController::class, 'destroy']);
+    // Stores
+    Route::apiResource('stores', StoreController::class);
     Route::get('stores/search/{storeName}', [StoreController::class, 'search']);
 
+    // Pay Rates
     Route::prefix('pay-rates')->group(function () {
         Route::get('/', [PayRateController::class, 'index']);
         Route::post('/sync', [PayRateController::class, 'sync']);
     });
-    
-    // Star Status Routes
-    Route::prefix('star-status')->group(function () {
-        Route::get('/', [StarStatusController::class, 'index']);
-        Route::post('/', [StarStatusController::class, 'store']);
-        Route::put('/{id}', [StarStatusController::class, 'update']);
-        Route::delete('/{id}', [StarStatusController::class, 'destroy']);
-        Route::get('/search', [StarStatusController::class, 'search']);
-    });
+
+    // Star Status
+    Route::apiResource('star-status', StarStatusController::class);
 });
 
 Route::fallback(function(){

@@ -22,6 +22,9 @@ class DatabaseSeeder extends Seeder
             StoreEmployeeSeeder::class,
             BorrowTeamMemberSeeder::class,
             LeaveSeeder::class,
+            PayRateSeeder::class,
+            StarStatusSeeder::class,
+            AvailabilitySeeder::class,
         ]);
     }
 }

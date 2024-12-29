@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('leaves', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('employee_id'); // Foreign key to employees
-            $table->date('date_applied');             // Date when leave is applied
-            $table->string('duration');               // Leave duration (e.g., "2 days")
+            $table->date('date_applied');             // Date when leave is applied    // Leave duration (e.g., "2 days")
+            $table->string('type');                     // type of leave (vl and sl)
+            $table->string('date_ended');               // Leave duration (e.g., "2 days")
             $table->string('reporting_manager');      // Name of reporting manager
             $table->text('reasons')->nullable();      // Leave reason (nullable)
             $table->string('status')->default('Pending'); // Leave status

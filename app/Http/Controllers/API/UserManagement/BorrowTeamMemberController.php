@@ -100,12 +100,19 @@ class BorrowTeamMemberController extends Controller
         return [
             'id' => $member->id,
             'employee' => $this->getEmployeeFullName($member),
-            'borrowed_store' => optional($member->borrowedStore)->name,
+            'original_store' => optional($member->employee->stores->first())->only(['id', 'name']),
+            'borrowed_store' => [
+                'id' => optional($member->borrowedStore)->id,
+                'name' => optional($member->borrowedStore)->name
+            ],
             'borrowed_date' => $member->borrowed_date,
             'borrowed_time' => $member->borrowed_time,
             'borrow_type' => $member->borrow_type,
             'skill_level' => $member->skill_level,
-            'transferred_store' => optional($member->transferredStore)->name,
+            'transferred_store' => [
+                'id' => optional($member->transferredStore)->id,
+                'name' => optional($member->transferredStore)->name
+            ],
             'transferred_date' => $member->transferred_date,
             'transferred_time' => $member->transferred_time,
             'status' => $member->status,
