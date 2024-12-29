@@ -12,7 +12,7 @@ class Leave extends Model
     protected $fillable = [
         'employee_id',
         'date_applied',
-        'duration',
+        'date_ended',
         'reporting_manager',
         'reasons',
         'status',

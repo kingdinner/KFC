@@ -19,6 +19,7 @@ class StoreEmployee extends Model
         'employee_id',
         'start_date',
         'end_date',
+        'status'
     ];
 
     public function payRate()

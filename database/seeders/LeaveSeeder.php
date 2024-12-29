@@ -28,10 +28,14 @@ class LeaveSeeder extends Seeder
         // Generate leave records
         foreach ($employees as $employee) {
             for ($i = 0; $i < rand(1, 3); $i++) {  // Each employee gets 1-3 leave records
+                $dateApplied = $faker->dateTimeBetween('-1 year', 'now');
+                $dateEnded = $faker->dateTimeBetween($dateApplied, '+30 days'); // Ensure date_ended is after date_applied
+                
                 Leave::create([
                     'employee_id' => $employee->id,
-                    'date_applied' => $faker->dateTimeBetween('-1 year', 'now'),
-                    'duration' => rand(1, 14) . ' days',
+                    'type' => $faker->randomElement(['VL', 'SL']), // Random leave type
+                    'date_applied' => $dateApplied,
+                    'date_ended' => $dateEnded,
                     'reporting_manager' => $faker->name,
                     'reasons' => $faker->sentence,
                     'status' => $faker->randomElement(['Pending', 'Approved', 'Rejected']),

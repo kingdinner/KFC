@@ -264,13 +264,15 @@ class SystemManagementController extends Controller
     {
         // Fetch the account with related data
         $account = AuthenticationAccount::with([
-            'employee.stores:id,name,store_code',
+            'employee.stores:id,name,store_code', // Fetch stores directly
             'employee.leaves:id,employee_id,date_applied,duration,reporting_manager,reasons,status',
-            'roles:name'
+            'roles:name',
+            'employee.borrowedTeamMembers.borrowedStore:id,name,store_code',
+            'employee.borrowedTeamMembers.transferredStore:id,name,store_code'
         ])->whereHas('employee', function ($query) use ($id) {
             $query->where('id', $id);
         })->first();
-
+    
         // Handle employee not found
         if (!$account) {
             return response()->json([
@@ -278,7 +280,7 @@ class SystemManagementController extends Controller
                 'message' => 'Employee not found',
             ], 404);
         }
-
+    
         // Format and return employee details
         return response()->json([
             'success' => true,
@@ -292,17 +294,45 @@ class SystemManagementController extends Controller
                     'address', 'city', 'state', 'zipcode'
                 ]),
                 'stores' => optional($account->employee)->stores->map(function ($store) {
-                    return $store->only(['id', 'name', 'store_code']);
+                    return [
+                        'id' => $store->id,
+                        'name' => $store->name,
+                        'store_code' => $store->store_code,
+                        'status' => optional($store->pivot)->status === null ? 'origin store' : $store->pivot->status,
+                        'start_date' => optional($store->pivot)->start_date ?? null,
+                        'end_date' => optional($store->pivot)->end_date ?? null,
+                    ];
                 }),
                 'leaves' => optional($account->employee)->leaves->map(function ($leave) {
                     return $leave->only([
-                        'id','date_applied', 'duration', 'reporting_manager', 'reasons', 'status'
+                        'id', 'date_applied', 'duration', 'reporting_manager', 'reasons', 'status'
                     ]);
+                }),
+                'borrowed_team_members' => optional($account->employee)->borrowedTeamMembers->map(function ($borrow) {
+                    return [
+                        'id' => $borrow->id,
+                        'borrowed_store' => [
+                            'id' => optional($borrow->borrowedStore)->id,
+                            'name' => optional($borrow->borrowedStore)->name
+                        ],
+                        'transferred_store' => [
+                            'id' => optional($borrow->transferredStore)->id,
+                            'name' => optional($borrow->transferredStore)->name
+                        ],
+                        'borrowed_date' => $borrow->borrowed_date,
+                        'borrowed_time' => $borrow->borrowed_time,
+                        'transferred_date' => $borrow->transferred_date,
+                        'transferred_time' => $borrow->transferred_time,
+                        'borrow_type' => $borrow->borrow_type,
+                        'skill_level' => $borrow->skill_level,
+                        'status' => $borrow->status,
+                        'reason' => $borrow->reason,
+                    ];
                 }),
             ],
         ]);
     }
-
+    
 
 
 
