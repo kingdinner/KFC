@@ -81,15 +81,9 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/', [PayRateController::class, 'index']);
         Route::post('/sync', [PayRateController::class, 'sync']);
     });
-    
-    // Star Status Routes
-    Route::prefix('star-status')->group(function () {
-        Route::get('/', [StarStatusController::class, 'index']);
-        Route::post('/', [StarStatusController::class, 'store']);
-        Route::put('/{id}', [StarStatusController::class, 'update']);
-        Route::delete('/{id}', [StarStatusController::class, 'destroy']);
-        Route::get('/search/{status}', [StarStatusController::class, 'search']);
-    });
+
+    // Star Status
+    Route::apiResource('star-status', StarStatusController::class);
 });
 
 
