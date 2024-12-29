@@ -13,6 +13,7 @@ use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
+use App\Http\Controllers\API\Ratings\RatingController;
 
 // Experimental route
 Route::match(['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], '/proxy', [ProxyController::class, 'handle']);
@@ -100,6 +101,13 @@ Route::middleware('auth:api')->group(function () {
 
     // Star Status
     Route::apiResource('star-status', StarStatusController::class);
+
+    Route::prefix('store-employees/{storeEmployeeId}/ratings')->group(function () {
+        Route::get('/', [RatingController::class, 'index']);
+        Route::get('{ratingId}', [RatingController::class, 'show']);
+        Route::post('/', [RatingController::class, 'store']);
+        Route::put('{ratingId}', [RatingController::class, 'update']);
+    });
 });
 
 

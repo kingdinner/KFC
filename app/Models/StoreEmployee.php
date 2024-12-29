@@ -36,4 +36,9 @@ class StoreEmployee extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id');
     }
+
+    public function ratings()
+    {
+        return $this->hasMany(Ratings::class);
+    }
 }
