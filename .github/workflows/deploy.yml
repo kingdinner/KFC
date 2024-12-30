@@ -13,13 +13,12 @@ jobs:
     - name: Set Up SSH
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_KEY }}" | tr -d '\r' > ~/.ssh/aws_key.pem
-        chmod 400 ~/.ssh/aws_key.pem
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/RAMCAR-KEY.pem
+        chmod 400 ~/.ssh/RAMCAR-KEY.pem
 
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/aws_key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
         # Update the system and install Docker
         sudo apt-get update && sudo apt-get install -y docker.io
 
