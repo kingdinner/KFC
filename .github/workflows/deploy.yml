@@ -25,71 +25,71 @@ jobs:
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-        set -e  # Exit immediately if any command fails
+          set -e  # Exit immediately if any command fails
 
-        # Remove conflicting Docker packages
-        sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
+          # Remove conflicting Docker packages
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
-        # Install Docker dependencies
-        sudo apt-get update
-        sudo apt-get install -y \
-          ca-certificates \
-          curl \
-          gnupg
+          # Install Docker dependencies
+          sudo apt-get update
+          sudo apt-get install -y \
+            ca-certificates \
+            curl \
+            gnupg
 
-        # Set up Docker repository
-        sudo install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        sudo chmod a+r /etc/apt/keyrings/docker.gpg
-        echo \
-          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-          $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          # Set up Docker repository
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-        # Install Docker
-        sudo apt-get update
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+          # Install Docker
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
-        # Proceed with the rest of the script
-        docker pull postgres:13
-        docker pull kingdinner1/laravel-app:latest
+          # Pull the latest Docker images
+          docker pull postgres:13
+          docker pull kingdinner1/laravel-app:latest
 
-        # Stop and remove existing containers (if running)
-        docker stop postgres || true
-        docker rm postgres || true
-        docker stop laravel-app || true
-        docker rm laravel-app || true
+          # Stop and remove existing containers (if running)
+          docker stop postgres || true
+          docker rm postgres || true
+          docker stop laravel-app || true
+          docker rm laravel-app || true
 
-        # Create a Docker network if it doesn't exist
-        if ! docker network inspect app_network >/dev/null 2>&1; then
-          docker network create app_network
-        fi
+          # Create a Docker network if it doesn't exist
+          if ! docker network inspect app_network >/dev/null 2>&1; then
+            docker network create app_network
+          fi
 
-        # Run the PostgreSQL container
-        docker run -d \
-          --name postgres \
-          --network app_network \
-          -e POSTGRES_USER=postgres \
-          -e POSTGRES_PASSWORD=root \
-          -e POSTGRES_DB=labormanual \
-          -p 5432:5432 \
-          postgres:13
+          # Run the PostgreSQL container
+          docker run -d \
+            --name postgres \
+            --network app_network \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=root \
+            -e POSTGRES_DB=labormanual \
+            -p 5432:5432 \
+            postgres:13
 
-        # Run the Laravel app container
-        docker run -d \
-          --name laravel-app \
-          --network app_network \
-          -e DB_CONNECTION=pgsql \
-          -e DB_HOST=postgres \
-          -e DB_PORT=5432 \
-          -e DB_DATABASE=labormanual \
-          -e DB_USERNAME=postgres \
-          -e DB_PASSWORD=root \
-          -p 80:8000 \
-          kingdinner1/laravel-app:latest
+          # Run the Laravel app container
+          docker run -d \
+            --name laravel-app \
+            --network app_network \
+            -e DB_CONNECTION=pgsql \
+            -e DB_HOST=postgres \
+            -e DB_PORT=5432 \
+            -e DB_DATABASE=labormanual \
+            -e DB_USERNAME=postgres \
+            -e DB_PASSWORD=root \
+            -p 80:8000 \
+            kingdinner1/laravel-app:latest
 
-        docker-compose down || true
-        docker-compose up -d --build
-        
-        echo "Deployment completed successfully."
+          # Use Docker Compose
+          docker-compose down || true
+          docker-compose up -d --build
+          
+          echo "Deployment completed successfully."
         EOF
-
