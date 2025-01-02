@@ -27,17 +27,17 @@ jobs:
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           set -e  # Exit immediately if any command fails
 
-          # Remove conflicting Docker packages
+          echo "Step 1: Removing conflicting Docker packages (if any)..."
           sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
-          # Install Docker dependencies
+          echo "Step 2: Installing Docker dependencies..."
           sudo apt-get update
           sudo apt-get install -y \
             ca-certificates \
             curl \
             gnupg
 
-          # Set up Docker repository
+          echo "Step 3: Setting up Docker repository..."
           sudo install -m 0755 -d /etc/apt/keyrings
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
           sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -45,26 +45,26 @@ jobs:
             "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
             $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-          # Install Docker
+          echo "Step 4: Installing Docker..."
           sudo apt-get update
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
-          # Pull the latest Docker images
+          echo "Step 5: Pulling Docker images..."
           docker pull postgres:13
           docker pull kingdinner1/laravel-app:latest
 
-          # Stop and remove existing containers (if running)
+          echo "Step 6: Stopping and removing existing containers (if running)..."
           docker stop postgres || true
           docker rm postgres || true
           docker stop laravel-app || true
           docker rm laravel-app || true
 
-          # Create a Docker network if it doesn't exist
+          echo "Step 7: Creating Docker network if it doesn't exist..."
           if ! docker network inspect app_network >/dev/null 2>&1; then
             docker network create app_network
           fi
 
-          # Run the PostgreSQL container
+          echo "Step 8: Running PostgreSQL container..."
           docker run -d \
             --name postgres \
             --network app_network \
@@ -74,7 +74,7 @@ jobs:
             -p 5432:5432 \
             postgres:13
 
-          # Run the Laravel app container
+          echo "Step 9: Running Laravel app container..."
           docker run -d \
             --name laravel-app \
             --network app_network \
@@ -87,18 +87,26 @@ jobs:
             -p 80:8000 \
             kingdinner1/laravel-app:latest
 
-          # Run Laravel setup commands
-          docker exec -i laravel-app sh -c "
-            cd /var/www &&
-            if [ ! -f .env ]; then cp .env.example .env; fi &&
-            chmod 644 .env &&
-            chown www-data:www-data .env &&
-            php artisan key:generate &&
+          echo "Step 10: Waiting for PostgreSQL to be ready..."
+          docker exec laravel-app sh -c "
+            until nc -z postgres 5432; do
+              echo 'Waiting for PostgreSQL...';
+              sleep 3;
+            done;
+            echo 'PostgreSQL is up!';
+          "
+
+          echo "Step 11: Running Laravel setup commands..."
+          docker exec laravel-app sh -c "
             php artisan config:cache &&
             php artisan migrate:refresh --force &&
             php artisan db:seed --force &&
-            php artisan serve --host=0.0.0.0 --port=8000
+            php artisan cache:clear
           "
+
+          echo "Step 12: Restarting Laravel app container..."
+          docker stop laravel-app || true
+          docker start laravel-app || true
 
           echo "Deployment completed successfully."
         EOF
