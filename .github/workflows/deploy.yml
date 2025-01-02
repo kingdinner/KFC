@@ -91,8 +91,8 @@ jobs:
           docker exec laravel-app sh -c "curl -L 'https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)' -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
 
           # Use Docker Compose inside the Laravel app container
-          docker exec laravel-app sh -c "cd /app && docker-compose down || true"
-          docker exec laravel-app sh -c "cd /app && docker-compose up -d --build"
+          docker exec laravel-app sh -c "cd /var/www && docker-compose down || true"
+          docker exec laravel-app sh -c "cd /var/www && docker-compose up -d --build"
 
           echo "Deployment completed successfully."
         EOF
