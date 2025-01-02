@@ -87,11 +87,18 @@ jobs:
             -p 80:8000 \
             kingdinner1/laravel-app:latest
 
-          # Run Laravel commands
-          docker exec -it laravel-app php artisan migrate --force
-          docker exec -it laravel-app php artisan cache:clear
-          docker exec -it laravel-app php artisan config:cache
-          docker exec -it laravel-app php artisan route:cache
+          # Run Laravel setup commands
+          docker exec -i laravel-app sh -c "
+            cd /var/www &&
+            if [ ! -f .env ]; then cp .env.example .env; fi &&
+            chmod 644 .env &&
+            chown www-data:www-data .env &&
+            php artisan key:generate &&
+            php artisan config:cache &&
+            php artisan migrate:refresh --force &&
+            php artisan db:seed --force &&
+            php artisan serve --host=0.0.0.0 --port=8000
+          "
 
           echo "Deployment completed successfully."
         EOF
