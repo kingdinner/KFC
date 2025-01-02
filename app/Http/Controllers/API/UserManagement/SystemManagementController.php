@@ -265,7 +265,7 @@ class SystemManagementController extends Controller
         // Fetch the account with related data
         $account = AuthenticationAccount::with([
             'employee.stores:id,name,store_code', // Fetch stores directly
-            'employee.leaves:id,employee_id,date_applied,duration,reporting_manager,reasons,status',
+            'employee.leaves:id,employee_id,type,date_applied,date_ended,reporting_manager,reasons,status',
             'roles:name',
             'employee.borrowedTeamMembers.borrowedStore:id,name,store_code',
             'employee.borrowedTeamMembers.transferredStore:id,name,store_code'

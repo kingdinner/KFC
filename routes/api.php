@@ -31,6 +31,7 @@ Route::middleware('auth:api')->group(function () {
 
     // User Management
     Route::apiResource('/users', SystemManagementController::class)->only(['store', 'update', 'destroy']);
+    Route::get('/users', [SystemManagementController::class, 'show']);
     Route::put('/users/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
     Route::post('/users/change-password', [SystemManagementController::class, 'resetPassword']);
     Route::post('/users/forgot-password', [SystemManagementController::class, 'forgotPassword']);
