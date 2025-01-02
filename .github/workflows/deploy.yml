@@ -87,6 +87,9 @@ jobs:
           -p 80:8000 \
           kingdinner1/laravel-app:latest
 
+        docker-compose down || true
+        docker-compose up -d --build
+        
         echo "Deployment completed successfully."
         EOF
 
