@@ -10,30 +10,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout the code repository (optional, depending on your needs)
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Set up SSH key
     - name: Set Up SSH
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/RAMCAR-KEY.pem
         chmod 400 ~/.ssh/RAMCAR-KEY.pem
 
+    # Deploy to EC2
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+        set -e  # Exit immediately if any command fails
+
         # Update the system and install Docker
-        sudo apt-get update && sudo apt-get install -y docker.io
+        sudo apt-get update -y
+        sudo apt-get install -y docker.io
 
         # Pull the latest Docker images
         docker pull postgres:13
         docker pull kingdinner1/laravel-app:latest
 
-        # Stop and remove existing containers
+        # Stop and remove existing containers (if running)
         docker stop postgres || true
         docker rm postgres || true
         docker stop laravel-app || true
         docker rm laravel-app || true
 
-        # Create a Docker network
-        docker network create app_network || true
+        # Create a Docker network if it doesn't exist
+        if ! docker network inspect app_network >/dev/null 2>&1; then
+          docker network create app_network
+        fi
 
         # Run the PostgreSQL container
         docker run -d \
@@ -57,4 +68,6 @@ jobs:
           -e DB_PASSWORD=root \
           -p 80:8000 \
           kingdinner1/laravel-app:latest
+
+        echo "Deployment completed successfully."
         EOF
