@@ -88,7 +88,7 @@ jobs:
               kingdinner1/laravel-app:latest
 
             # Run Laravel setup commands
-            docker exec -it laravel-app sh -c "
+            docker exec -i laravel-app sh -c "
               cd /var/www &&
               if [ ! -f .env ]; then cp .env.example .env; fi &&
               chmod 644 .env &&
