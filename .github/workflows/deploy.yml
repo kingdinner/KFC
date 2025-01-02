@@ -10,24 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the code repository (optional, depending on your needs)
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # Set up SSH key
     - name: Set Up SSH
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/RAMCAR-KEY.pem
         chmod 400 ~/.ssh/RAMCAR-KEY.pem
 
-    # Deploy to EC2
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          set -e  # Exit immediately if any command fails
+          set -e
 
-          echo "Step 1: Removing conflicting Docker packages (if any)..."
+          echo "Step 1: Removing conflicting Docker packages..."
           sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
           echo "Step 2: Installing Docker dependencies..."
@@ -53,13 +50,13 @@ jobs:
           docker pull postgres:13
           docker pull kingdinner1/laravel-app:latest
 
-          echo "Step 6: Stopping and removing existing containers (if running)..."
+          echo "Step 6: Stopping and removing existing containers..."
           docker stop postgres || true
           docker rm postgres || true
           docker stop laravel-app || true
           docker rm laravel-app || true
 
-          echo "Step 7: Creating Docker network if it doesn't exist..."
+          echo "Step 7: Creating Docker network..."
           if ! docker network inspect app_network >/dev/null 2>&1; then
             docker network create app_network
           fi
@@ -89,7 +86,7 @@ jobs:
 
           echo "Step 10: Waiting for PostgreSQL to be ready..."
           docker exec laravel-app sh -c "
-            until nc -z postgres 5432; do
+            while ! (echo > /dev/tcp/postgres/5432) &>/dev/null; do
               echo 'Waiting for PostgreSQL...';
               sleep 3;
             done;
@@ -103,10 +100,6 @@ jobs:
             php artisan db:seed --force &&
             php artisan cache:clear
           "
-
-          echo "Step 12: Restarting Laravel app container..."
-          docker stop laravel-app || true
-          docker start laravel-app || true
 
           echo "Deployment completed successfully."
         EOF
