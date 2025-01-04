@@ -15,7 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('position');
             $table->decimal('hourly_rate', 8, 2);
+            $table->string('rate_label');
+            $table->unsignedBigInteger('store_employee_id'); // Add the foreign key column
             $table->timestamps();
+            // Add foreign key constraint
+            $table->foreign('store_employee_id')
+                ->references('id')
+                ->on('store_employees')
+                ->onDelete('cascade'); // Adjust the "onDelete" action if needed
         });
         
     }

@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
             LeaveSeeder::class,
             PayRateSeeder::class,
             StarStatusSeeder::class,
-            AvailabilitySeeder::class,
         ]);
     }
 }
