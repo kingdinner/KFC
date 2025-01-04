@@ -84,6 +84,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Star Status
     Route::apiResource('star-status', StarStatusController::class);
+    Route::get('/search/{status}', [StarStatusController::class, 'search']);
 });
 
 Route::fallback(function(){

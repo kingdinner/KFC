@@ -49,7 +49,7 @@ class StoreController extends Controller
             'name' => 'required|string|max:255',
             'cost_center' => 'required|string|max:255',
             'asset_type' => 'required|string|max:255',
-            'store_code' => 'required|string|max:255|unique:stores,store_code,' . $store->id,
+            'store_code' => 'required|string|max:255|unique:stores,store_code,' . ($store->id ?? 'null'), //Added Fallbacks
         ]);
 
         $store->update($request->all());
@@ -74,12 +74,12 @@ class StoreController extends Controller
     public function search($storeName)
     {
         $storeName = trim($storeName);
-        
-        if (empty($query)) {
+
+        if (empty($storeName)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Store name parameter is required'
-            ], 400); // 400 Bad Request
+            ], 400);
         }
 
         $stores = Store::where('name', 'LIKE', "%{$storeName}%")
@@ -90,7 +90,7 @@ class StoreController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'No stores found for the given store name'
-            ], 404); // 404 Not Found
+            ], 404);
         }
 
         return response()->json([
@@ -98,6 +98,4 @@ class StoreController extends Controller
             'data' => $stores
         ], 200);
     }
-
-
 }

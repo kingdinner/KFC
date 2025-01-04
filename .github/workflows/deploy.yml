@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
     - name: Set Up SSH
       run: |
         mkdir -p ~/.ssh
@@ -19,12 +22,10 @@ jobs:
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-        # Update the system and install Docker
-        sudo apt-get update && sudo apt-get install -y docker.io
+          set -e
 
-        # Pull the latest Docker images
-        docker pull postgres:13
-        docker pull kingdinner1/laravel-app:latest
+          echo "Step 1: Removing conflicting Docker packages..."
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
         # Stop and remove existing containers
         docker stop postgres || true
@@ -45,16 +46,60 @@ jobs:
           -p 5432:5432 \
           postgres:13
 
-        # Run the Laravel app container
-        docker run -d \
-          --name laravel-app \
-          --network app_network \
-          -e DB_CONNECTION=pgsql \
-          -e DB_HOST=postgres \
-          -e DB_PORT=5432 \
-          -e DB_DATABASE=labormanual \
-          -e DB_USERNAME=postgres \
-          -e DB_PASSWORD=root \
-          -p 80:8000 \
-          kingdinner1/laravel-app:latest
+          echo "Step 5: Pulling Docker images..."
+          docker pull postgres:13
+          docker pull kingdinner1/laravel-app:latest
+
+          echo "Step 6: Stopping and removing existing containers..."
+          docker stop postgres || true
+          docker rm postgres || true
+          docker stop laravel-app || true
+          docker rm laravel-app || true
+
+          echo "Step 7: Creating Docker network..."
+          if ! docker network inspect app_network >/dev/null 2>&1; then
+            docker network create app_network
+          fi
+
+          echo "Step 8: Running PostgreSQL container..."
+          docker run -d \
+            --name postgres \
+            --network app_network \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=root \
+            -e POSTGRES_DB=labormanual \
+            -p 5432:5432 \
+            postgres:13
+
+          echo "Step 9: Running Laravel app container..."
+          docker run -d \
+            --name laravel-app \
+            --network app_network \
+            -e DB_CONNECTION=pgsql \
+            -e DB_HOST=postgres \
+            -e DB_PORT=5432 \
+            -e DB_DATABASE=labormanual \
+            -e DB_USERNAME=postgres \
+            -e DB_PASSWORD=root \
+            -p 80:8000 \
+            kingdinner1/laravel-app:latest
+
+          echo "Step 10: Waiting for PostgreSQL to be ready..."
+          docker exec laravel-app sh -c "
+            while ! (echo > /dev/tcp/postgres/5432) &>/dev/null; do
+              echo 'Waiting for PostgreSQL...';
+              sleep 3;
+            done;
+            echo 'PostgreSQL is up!';
+          "
+
+          echo "Step 11: Running Laravel setup commands..."
+          docker exec laravel-app sh -c "
+            php artisan config:cache &&
+            php artisan migrate:refresh --force &&
+            php artisan db:seed --force &&
+            php artisan cache:clear
+          "
+
+          echo "Deployment completed successfully."
         EOF
