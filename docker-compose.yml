@@ -26,7 +26,7 @@ services:
             php artisan key:generate &&
             php artisan config:cache &&
             for i in {1..10}; do
-              php artisan migrate --force && break || echo 'Waiting for database...' && sleep 5;
+              php artisan migrate:refresh --force && break || echo 'Waiting for database...' && sleep 5;
             done &&
             php artisan db:seed --force &&
             echo 'Laravel setup completed successfully!' && php-fpm "
@@ -53,7 +53,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
     ports:
-      - "5432:5432" # Exposing PostgreSQL for external tools (optional)
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
