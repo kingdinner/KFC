@@ -24,44 +24,43 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/RAMCAR-KEY.pem ubuntu@ec2-54-169-68-154.ap-southeast-1.compute.amazonaws.com << 'EOF'
           set -e
-          echo "Step 1: Removing conflicting Docker packages..."
-          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
-          echo "Step 2: Installing Docker dependencies..."
-          sudo apt-get update
+          # Step 1: Update and Upgrade System
+          echo "Updating and upgrading the system..."
+          sudo apt-get update -y
+          sudo apt-get upgrade -y
+
+          # Step 2: Install Docker
+          echo "Installing Docker..."
           sudo apt-get install -y \
             ca-certificates \
             curl \
-            gnupg
-
-          echo "Step 3: Setting up Docker repository..."
-          sudo install -m 0755 -d /etc/apt/keyrings
+            gnupg \
+            lsb-release
+          sudo mkdir -p /etc/apt/keyrings
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
-          sudo chmod a+r /etc/apt/keyrings/docker.gpg
-          echo \
-            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-          echo "Step 4: Installing Docker..."
-          sudo apt-get update
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -y
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
-          echo "Step 5: Pulling Docker images..."
+          # Step 3: Pull Docker images
+          echo "Pulling Docker images..."
           docker pull kingdinner1/postgres:13
           docker pull kingdinner1/laravel-app:latest
+          docker pull nginx:latest
 
-          echo "Step 6: Stopping and removing existing containers..."
-          docker stop postgres || true
-          docker rm postgres || true
-          docker stop laravel-app || true
-          docker rm laravel-app || true
+          # Step 4: Set up Docker network
+          echo "Setting up Docker network..."
+          docker network create app_network || true
 
-          echo "Step 7: Creating Docker network..."
-          if ! docker network inspect app_network >/dev/null 2>&1; then
-            docker network create app_network
-          fi
+          # Step 5: Clean up existing containers
+          echo "Cleaning up existing containers..."
+          docker stop postgres || true && docker rm postgres || true
+          docker stop laravel-app || true && docker rm laravel-app || true
+          docker stop nginx || true && docker rm nginx || true
 
-          echo "Step 8: Running PostgreSQL container..."
+          # Step 6: Start Docker containers
+          echo "Starting PostgreSQL container..."
           docker run -d \
             --name postgres \
             --network app_network \
@@ -71,7 +70,7 @@ jobs:
             -p 5432:5432 \
             kingdinner1/postgres:13
 
-          echo "Step 9: Running Laravel app container..."
+          echo "Starting Laravel application container..."
           docker run -d \
             --name laravel-app \
             --network app_network \
@@ -81,8 +80,20 @@ jobs:
             -e DB_DATABASE=labormanual \
             -e DB_USERNAME=postgres \
             -e DB_PASSWORD=root \
-            -p 80:8000 \
+            -p 9000:9000 \
             kingdinner1/laravel-app:latest
+
+          echo "Starting Nginx container..."
+          docker run -d \
+            --name nginx \
+            --network app_network \
+            -p 80:80 \
+            -v /home/ubuntu/nginx.conf:/etc/nginx/nginx.conf \
+            nginx:latest
+
+          # Step 7: Verify deployment
+          echo "Verifying deployment..."
+          docker ps
 
           echo "Deployment completed successfully."
         EOF

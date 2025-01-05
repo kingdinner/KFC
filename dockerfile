@@ -1,17 +1,20 @@
-# Use the official PHP 8.2 FPM image as the base image
+# Use the official PHP-FPM image
 FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
-    libzip-dev \
     libpq-dev \
+    libonig-dev \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    netcat-openbsd \
     curl \
-    zip \
-    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql mbstring zip bcmath gd
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -20,17 +23,21 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 # Copy application files
-COPY . /var/www
+COPY . .
 
-# Ensure permissions for Laravel storage and cache
+# Copy the initialization script
+COPY init.sh /usr/local/bin/init.sh
+RUN chmod +x /usr/local/bin/init.sh
+
+# Install Composer dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+# Set permissions for storage and cache
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Install application dependencies
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+# Expose PHP-FPM on port 9000
+EXPOSE 9000
 
-# Expose port 8000
-EXPOSE 8000
-
-# Start the Laravel development server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Use the entrypoint script
+ENTRYPOINT ["/usr/local/bin/init.sh"]
