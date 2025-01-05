@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    netcat-openbsd \
     curl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql mbstring zip bcmath gd
@@ -25,10 +24,6 @@ WORKDIR /var/www
 # Copy application files
 COPY . .
 
-# Copy the initialization script
-COPY init.sh /usr/local/bin/init.sh
-RUN chmod +x /usr/local/bin/init.sh
-
 # Install Composer dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
@@ -36,8 +31,12 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
+# Optimize Laravel for API
+RUN php artisan config:cache \
+    && php artisan route:cache
+
 # Expose PHP-FPM on port 9000
 EXPOSE 9000
 
-# Use the entrypoint script
-ENTRYPOINT ["/usr/local/bin/init.sh"]
+# Start PHP-FPM
+CMD ["php-fpm"]
