@@ -21,56 +21,58 @@ class SystemManagementController extends Controller
     use SoftDeleteTrait;
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id' => 'required|string|min:6|unique:authentication_accounts',
-            'email' => 'required|string|email|max:255|unique:authentication_accounts',
-            'password' => 'required|string|min:6',
-            'role' => 'required|string|exists:roles,name',
-            'secret_question' => 'required|string|max:255',
-            'secret_answer' => 'required|string|max:255',
+        $validatedData = $request->validate([
+            'users' => 'required|array',
+            'users.*.employee_id' => 'required|string|min:6|unique:authentication_accounts,employee_id',
+            'users.*.email' => 'required|string|email|max:255|unique:authentication_accounts,email',
+            'users.*.password' => 'required|string|min:6',
+            'users.*.role' => 'required|string|exists:roles,name',
+            'users.*.secret_question' => 'required|string|max:255',
+            'users.*.secret_answer' => 'required|string|max:255',
+            'users.*.employee.firstname' => 'required|string|max:255',
+            'users.*.employee.lastname' => 'required|string|max:255',
+            'users.*.employee.email_address' => 'required|string|email|unique:employees,email_address',
+            'users.*.employee.dob' => 'nullable|date',
+            'users.*.employee.nationality' => 'nullable|string|max:255',
+            'users.*.employee.address' => 'nullable|string|max:255',
+            'users.*.employee.city' => 'nullable|string|max:255',
+            'users.*.employee.state' => 'nullable|string|max:255',
+            'users.*.employee.zipcode' => 'nullable|string|max:255',
         ]);
-    
-        $user = AuthenticationAccount::create([
-            'employee_id' => $validated['employee_id'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'secret_question' => $validated['secret_question'],
-            'secret_answer' => Hash::make($validated['secret_answer']),
+        $timestamp = now();
+
+        foreach ($validatedData['users'] as $data) {
+            $accountData = [
+                'employee_id' => $data['employee_id'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'secret_question' => $data['secret_question'],
+                'secret_answer' => Hash::make($data['secret_answer']),
+                'is_active' => true,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+
+            // Save AuthenticationAccount
+            $account = AuthenticationAccount::create($accountData);
+
+            // Assign roles
+            $account->assignRole($data['role']);
+
+            // Prepare employee data
+            $employeeData = $data['employee'];
+            $employeeData['authentication_account_id'] = $account->id;
+            $employeeData['created_at'] = $timestamp;
+            $employeeData['updated_at'] = $timestamp;
+
+            // Save Employee
+            Employee::create($employeeData);
+        }
+
+        return response()->json([
+            'message' => 'Batch insert successful.',
+            'inserted_count' => count($validatedData['users']),
         ]);
-    
-        $user->assignRole($validated['role']);
-    
-        return response()->json($user);
-    }
-
-    public function update(Request $request, AuthenticationAccount $userid)
-    {
-        // Determine the fields that were actually provided in the request
-        $data = $request->only(['email', 'role']);
-
-        $rules = [
-            'role' => 'sometimes|string|exists:roles,name'
-        ];
-        
-        if (isset($data['email']) && $data['email'] !== $userid->email) {
-            $rules['email'] = 'email|max:255|unique:users,email,' . $userid->id;
-        }
-
-        $validated = $request->validate($rules);
-
-        $changes = array_filter($validated, function($value, $key) use ($userid) {
-            return $userid[$key] != $value;
-        }, ARRAY_FILTER_USE_BOTH);
-
-        if (!empty($changes)) {
-            $userid->update($changes);
-        }
-
-        if (isset($validated['role']) && ($userid->roles->first()->name ?? null) !== $validated['role']) {
-            $userid->syncRoles($validated['role']);
-        }
-
-        return response()->json(['message' => 'User updated successfully', 'changes' => $changes]);
     }
 
     public function toggleUserLock(AuthenticationAccount $userid, Request $request)
@@ -251,11 +253,13 @@ class SystemManagementController extends Controller
                     'employee' => optional($account->employee)->only([
                         'id', 'firstname', 'lastname', 'email_address', 
                         'address', 'city', 'state', 'zipcode'
-                    ]),
-                    'stores' => optional($account->employee)->stores->map(function ($store) {
-                        return $store->only(['id', 'name', 'store_code']);
-                    }),
-                ];
+                    ]) ?: [], // Return an empty array if employee is null
+                    'stores' => optional($account->employee)->stores
+                        ? $account->employee->stores->map(function ($store) {
+                            return $store->only(['id', 'name', 'store_code']);
+                        })
+                        : [], // Return an empty array if stores is null
+                ];                
             }),
         ]);
     }
@@ -333,8 +337,65 @@ class SystemManagementController extends Controller
         ]);
     }
     
+    public function update(Request $request, $id)
+    {
+        $validatedData = $request->validate([
+            'password' => 'nullable|string|min:6',
+            'role' => 'nullable|string|exists:roles,name',
+            'secret_question' => 'nullable|string|max:255',
+            'secret_answer' => 'nullable|string|max:255',
+            'employee.firstname' => 'nullable|string|max:255',
+            'employee.lastname' => 'nullable|string|max:255',
+            'employee.email_address' => 'nullable|string|email|unique:employees,email_address,' . $id . ',authentication_account_id',
+            'employee.dob' => 'nullable|date',
+            'employee.nationality' => 'nullable|string|max:255',
+            'employee.address' => 'nullable|string|max:255',
+            'employee.city' => 'nullable|string|max:255',
+            'employee.state' => 'nullable|string|max:255',
+            'employee.zipcode' => 'nullable|string|max:255',
+        ]);
 
+        // Find the AuthenticationAccount by ID
+        $account = AuthenticationAccount::findOrFail($id);
 
+        // Update AuthenticationAccount details
+        $account->update([
+            'password' => isset($validatedData['password']) ? Hash::make($validatedData['password']) : $account->password,
+            'secret_question' => $validatedData['secret_question'] ?? $account->secret_question,
+            'secret_answer' => isset($validatedData['secret_answer']) ? Hash::make($validatedData['secret_answer']) : $account->secret_answer,
+        ]);
+
+        // Update Role if provided
+        if (!empty($validatedData['role'])) {
+            $account->syncRoles([$validatedData['role']]);
+        }
+
+        // Update Employee details if provided
+        if (!empty($validatedData['employee'])) {
+            $employeeData = $validatedData['employee'];
+            if ($account->employee) {
+                $account->employee->update($employeeData);
+            } else {
+                // If no employee exists, create one
+                $employeeData['authentication_account_id'] = $account->id;
+                Employee::create($employeeData);
+            }
+        }
+
+        return response()->json([
+            'message' => 'User updated successfully.',
+            'user' => [
+                'account_id' => $account->id,
+                'email' => $account->email,
+                'is_active' => $account->is_active,
+                'roles' => $account->roles->pluck('name'),
+                'employee' => optional($account->employee)->only([
+                    'id', 'firstname', 'lastname', 'email_address',
+                    'address', 'city', 'state', 'zipcode'
+                ]),
+            ],
+        ]);
+    }
 
     /**
      * Soft delete an account.

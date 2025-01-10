@@ -30,11 +30,13 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/hr-rule', [HRFAQController::class, 'storeOrUpdateHRRule']);
 
     // User Management
-    Route::apiResource('/users', SystemManagementController::class)->only(['store', 'update', 'destroy']);
+    Route::apiResource('/users', SystemManagementController::class)->only(['store']);
     Route::put('/users/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
     Route::post('/users/change-password', [SystemManagementController::class, 'resetPassword']);
     Route::post('/users/forgot-password', [SystemManagementController::class, 'forgotPassword']);
     Route::get('/users/{id}', [SystemManagementController::class, 'findEmployeeById']);
+    Route::put('/users/update/{id}', [SystemManagementController::class, 'update']);
+    Route::get('/users', [SystemManagementController::class, 'show']);
     Route::put('/users/{userid}/assign-roles', [SystemManagementController::class, 'assignOrEditRoles']);
 
     // Roles

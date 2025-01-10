@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\AuthService;
 use App\Http\Controllers\Controller;
 use App\Models\AuthenticationAccount;
-use Illuminate\Support\Facades\Log;
+use App\Models\Permission;
 class AuthController extends Controller
 {
     protected $authService;
@@ -23,33 +23,61 @@ class AuthController extends Controller
             'employee_id' => 'required|string|exists:authentication_accounts,employee_id',
             'password' => 'required|string|min:6',
         ]);
-
+    
         // Retrieve the user by employee ID
         $user = AuthenticationAccount::where('employee_id', $validatedData['employee_id'])->first();
-        
+    
         // Check if the account is locked (i.e., is_active is false)
         if (!$user->is_active) {
             return response()->json(['message' => 'Account is locked. Please contact support.'], 403);
         }
-        Log::info('Login attempt with employee_id:', [$validatedData['employee_id']]);
-        Log::info('User found:', [$user]);
-
+    
         // Attempt to login using authService
         $loginResponse = $this->authService->attemptLogin($validatedData['employee_id'], $validatedData['password']);
-        Log::info('Login response:', [$loginResponse]);
-        // If login attempt fails
         if (!$loginResponse['success']) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
-
-        // If login is successful, return the access token
+    
+        // Determine roles of the user
+        $roles = $user->roles()->pluck('name');
+    
+        // Fetch permissions associated with the user's roles
+        $roleIds = $user->roles()->pluck('id');
+        $permissions = Permission::whereHas('permissionRoleDetails', function ($query) use ($roleIds) {
+            $query->whereIn('role_id', $roleIds);
+        })->with(['permissionRoleDetails' => function ($query) use ($roleIds) {
+            $query->whereIn('role_id', $roleIds);
+        }])->get();
+    
+        // Format permissions
+        $permissionsData = $permissions->map(function ($permission) {
+            $details = $permission->permissionRoleDetails->map(function ($detail) {
+                return [
+                    'view' => in_array('read', $detail->permission_array),
+                    'edit' => in_array('edit', $detail->permission_array),
+                ];
+            });
+    
+            return [
+                'name' => $permission->name,
+                'Permission' => $details->reduce(function ($carry, $item) {
+                    return [
+                        'view' => $carry['view'] || $item['view'],
+                        'edit' => $carry['edit'] || $item['edit'],
+                    ];
+                }, ['view' => false, 'edit' => false]), // Aggregate permissions across roles
+            ];
+        });
+    
+        // Return the response
         return response()->json([
             'token_type' => 'Bearer',
-            'accessToken' => $loginResponse['accessToken']
+            'accessToken' => $loginResponse['accessToken'],
+            'roles' => $roles, // Include roles
+            'permissions' => $permissionsData, // Include permissions
         ]);
     }
-
-
+    
     
     public function logout(Request $request)
     {

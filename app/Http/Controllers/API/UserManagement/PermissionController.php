@@ -18,29 +18,39 @@ class PermissionController extends Controller
      */
     public function index(): JsonResponse
     {
-        $permissions = Permission::with(['permissionRoleDetails' => function($query) {
-            $query->with('role');
-        }])->get();
-
-        $permissionsData = $permissions->map(function ($permission) {
+        $permissions = Permission::with(['permissionRoleDetails.role'])->get();
+    
+        $permissionsData = $permissions->flatMap(function ($permission) {
+            return $permission->permissionRoleDetails->map(function ($detail) use ($permission) {
+                return [
+                    'rolename' => $detail->role->name, // Role name
+                    'name' => $permission->name,      // Permission name
+                    'Permission' => [
+                        'view' => in_array('read', $detail->permission_array), // Check 'read' access
+                        'edit' => in_array('edit', $detail->permission_array), // Check 'edit' access
+                    ],
+                ];
+            });
+        });
+    
+        $groupedData = $permissionsData->groupBy('rolename')->map(function ($group, $rolename) {
             return [
-                'id' => $permission->id,
-                'name' => $permission->name,
-                'roles' => $permission->permissionRoleDetails->map(function ($detail) {
+                'rolename' => $rolename,
+                'permissions' => $group->map(function ($item) {
                     return [
-                        'role' => $detail->role->name,
-                        'actions' => $detail->permission_array, 
+                        'name' => $item['name'],
+                        'Permission' => $item['Permission'],
                     ];
                 }),
             ];
-        });
-
-        // Return the permissions with roles and actions in a JSON response
+        })->values();
+    
         return response()->json([
             'success' => true,
-            'data' => $permissionsData,
+            'data' => $groupedData,
         ]);
     }
+    
     public function store(Request $request): JsonResponse
     {
         // Validate the request data

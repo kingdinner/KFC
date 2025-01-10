@@ -25,42 +25,49 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Define the permissions and actions for User Management and Labor Management
         $permissions = [
-            'User Management' => [
-                'Add/Edit User' => ['create', 'update', 'delete'],
-                'Delete User' => ['create', 'update', 'delete'],
-                'View User' => ['create', 'update', 'delete'],
-                'Add/Edit User Roles' => ['create', 'update', 'delete'],
-                'View User Roles' => ['create', 'update', 'delete'],
-                'Delete User Roles' => ['create', 'update', 'delete'],
-                'Module Permission' => ['create', 'update', 'delete'],
-                'Notification Permission' => ['create', 'update', 'delete'],
-                'Archive Users' => ['create', 'update', 'delete'],
-            ],
-            'Labor Management' => [
-                'Create Labor Management' => ['create', 'update', 'delete']
-            ]
+            'User Management' => ['view', 'edit'],
+            'Labor Management' =>  ['view', 'edit'],
+            'User Account' =>  ['view', 'edit'],
+            'User Role' =>  ['view', 'edit'],
+            'Authentication' =>  ['view', 'edit'],
+            'User Profile' =>  ['view', 'edit'],
+            'Labor Forecast' =>  ['view', 'edit'],
+            'Dashboard' =>  ['view', 'edit'],
+            'Borrow Team Member' =>  ['view', 'edit'],
+            'Digital Shift Member' =>  ['view', 'edit'],
+            'TMAR' =>  ['view', 'edit'],
+            'Approval' =>  ['view', 'edit'],
+            'Shift Approval' =>  ['view', 'edit'],
+            'Transfer Approval' =>  ['view', 'edit'],
+            'Date Management' =>  ['view', 'edit'],
+            'Store Management' =>  ['view', 'edit'],
+            'Skill Level Management' =>  ['view', 'edit'],
+            'Faqs and Policies Management' =>  ['view', 'edit'],
+            'Reports' =>  ['view', 'edit'],
         ];
 
         // Loop through each module and create permissions
-        foreach ($permissions as $module => $actions) {
-            foreach ($actions as $permissionName => $actionArray) {
+        foreach ($permissions as $permissionName => $actions) {
                 // Create permission in the system
                 $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => $guardName]);
-
                 // Attach permission details for admin
                 PermissionRoleDetail::create([
                     'permission_id' => $permission->id,
                     'role_id' => $roleAdmin->id,
-                    'permission_array' => $actionArray,
+                    'permission_array' => $actions,
                 ]);
 
-                // Attach permission details for manager (example, let's give fewer permissions)
                 PermissionRoleDetail::create([
                     'permission_id' => $permission->id,
                     'role_id' => $roleManager->id,
-                    'permission_array' => ['read'],  // Managers might only have 'read' access
+                    'permission_array' => ['read','edit'],  // Managers might only have 'read' access
                 ]);
-            }
+
+                PermissionRoleDetail::create([
+                    'permission_id' => $permission->id,
+                    'role_id' => $roleTeamMember->id,
+                    'permission_array' => ['read','edit'],  // Managers might only have 'read' access
+                ]);
         }
 
         // Fetch all permissions again (including newly created ones)
