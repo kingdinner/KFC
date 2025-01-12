@@ -13,6 +13,10 @@ use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
 
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+
 // Experimental route
 Route::match(['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], '/proxy', [ProxyController::class, 'handle']);
 
@@ -49,6 +53,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Leaves
     Route::apiResource('/leaves', LeaveController::class)->only(['store', 'index']);
+    Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
 
     // Availability
     Route::apiResource('availability', AvailabilityController::class);
@@ -87,6 +92,64 @@ Route::middleware('auth:api')->group(function () {
     // Star Status
     Route::apiResource('star-status', StarStatusController::class);
     Route::get('/search/{status}', [StarStatusController::class, 'search']);
+});
+
+// remove this in production
+Route::post('/reset-database', function () {
+    try {
+        // Reset the database and run seeders
+        Artisan::call('migrate:fresh --seed');
+
+        // Generate Passport keys manually
+        $privateKeyPath = storage_path('oauth-private.key');
+        $publicKeyPath = storage_path('oauth-public.key');
+
+        if (!File::exists($privateKeyPath) || !File::exists($publicKeyPath)) {
+            shell_exec('openssl genrsa -out ' . $privateKeyPath . ' 4096');
+            shell_exec('openssl rsa -in ' . $privateKeyPath . ' -pubout -out ' . $publicKeyPath);
+        }
+
+        // Insert or update OAuth clients
+        $personalAccessClientId = DB::table('oauth_clients')->updateOrInsert(
+            ['personal_access_client' => true],
+            [
+                'name' => 'Personal Access Client',
+                'secret' => bin2hex(random_bytes(32)),
+                'redirect' => 'http://localhost',
+                'password_client' => false,
+                'revoked' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        $passwordGrantClientId = DB::table('oauth_clients')->updateOrInsert(
+            ['password_client' => true],
+            [
+                'name' => 'Password Grant Client',
+                'secret' => bin2hex(random_bytes(32)),
+                'redirect' => 'http://localhost',
+                'personal_access_client' => false,
+                'revoked' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        // Link the personal access client
+        DB::table('oauth_personal_access_clients')->updateOrInsert(
+            ['client_id' => $personalAccessClientId],
+            ['created_at' => now(), 'updated_at' => now()]
+        );
+
+        return response()->json([
+            'message' => 'Database reset, seeded successfully, and Passport keys and clients generated/updated.',
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'An error occurred: ' . $e->getMessage(),
+        ], 500);
+    }
 });
 
 Route::fallback(function(){

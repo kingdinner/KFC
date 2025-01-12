@@ -478,7 +478,49 @@ class SystemManagementController extends Controller
         ]);
     }
 
-
+    private function fetchExternal()
+    {
+        return [
+            [
+                "employee_id" => "2025-0006",
+                "email" => "user57@example.com",
+                "password" => "password123",
+                "role" => "admin",
+                "secret_question" => "What is your pet's name?",
+                "secret_answer" => "Charlie",
+                "employee" => [
+                    "firstname" => "John",
+                    "lastname" => "Doe",
+                    "email_address" => "john.doe@example.com",
+                    "dob" => "1990-01-01",
+                    "nationality" => "American",
+                    "address" => "123 Main St",
+                    "city" => "New York",
+                    "state" => "NY",
+                    "zipcode" => "10001",
+                ],
+            ],
+            [
+                "employee_id" => "2025-0004",
+                "email" => "user85@example.com",
+                "password" => "password456",
+                "role" => "manager",
+                "secret_question" => "What is your mother's maiden name?",
+                "secret_answer" => "Smith",
+                "employee" => [
+                    "firstname" => "Jane",
+                    "lastname" => "Doe",
+                    "email_address" => "jane.doe@example.com",
+                    "dob" => "1992-05-10",
+                    "nationality" => "Canadian",
+                    "address" => "456 Elm St",
+                    "city" => "Toronto",
+                    "state" => "ON",
+                    "zipcode" => "M5H 2N2",
+                ],
+            ],
+        ];        
+    }
 
     //change this to sync upon receive API
     // public function createAccountForEmployee(Request $request)

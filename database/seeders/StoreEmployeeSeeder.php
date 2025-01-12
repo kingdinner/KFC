@@ -32,7 +32,7 @@ class StoreEmployeeSeeder extends Seeder
             $store = $stores->random();
 
             StoreEmployee::create([
-                'store_id' => $store->id,
+                'store_id' => 1,
                 'employee_id' => $employee->id,
                 'start_date' => $faker->dateTimeBetween('-2 years', 'now'),
                 'end_date' => $faker->optional(0.3)->dateTimeBetween('now', '+1 year'), // 30% chance of having an end date

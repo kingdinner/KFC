@@ -16,6 +16,7 @@ class Leave extends Model
         'reporting_manager',
         'reasons',
         'status',
+        'type'
     ];
 
     /**

@@ -10,7 +10,6 @@ class UsersTableSeeder extends Seeder
 {
     public function run()
     {
-        
         // Create default user
         $user = AuthenticationAccount::create([
             'employee_id' => '2024-1025',
@@ -23,7 +22,7 @@ class UsersTableSeeder extends Seeder
         // Assign roles
         $user->assignRole('admin');
 
-        // Create additional users as necessary
+        // Create additional users
         $user2 = AuthenticationAccount::create([
             'employee_id' => '2024-1023',
             'email' => 'user4@example.com',
@@ -34,7 +33,6 @@ class UsersTableSeeder extends Seeder
 
         $user2->assignRole('manager');
 
-        // Create additional users as necessary
         $user3 = AuthenticationAccount::create([
             'employee_id' => '2024-1024',
             'email' => 'user@example.com',
@@ -44,5 +42,18 @@ class UsersTableSeeder extends Seeder
         ]);
 
         $user3->assignRole('team-member');
+
+        // Create 10 team members
+        for ($i = 1; $i <= 10; $i++) {
+            $teamMember = AuthenticationAccount::create([
+                'employee_id' => '2024-TM-' . str_pad($i, 2, '0', STR_PAD_LEFT),
+                'email' => 'teammember' . $i . '@example.com',
+                'password' => Hash::make('password'),
+                'secret_question' => 'What is your favorite animal?',
+                'secret_answer' => Hash::make('dog'),
+            ]);
+
+            $teamMember->assignRole('team-member');
+        }
     }
 }
