@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\PayRate;
+use App\Models\StarStatus;
+use App\Models\Employee;
 
 class StoreEmployee extends Model
 {
@@ -32,5 +35,10 @@ class StoreEmployee extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Ratings::class);
     }
 }

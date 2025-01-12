@@ -6,12 +6,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\DataManagement\StoreController;
 use App\Http\Controllers\API\DataManagement\PayRateController;
 use App\Http\Controllers\API\DataManagement\StarStatusController;
+use App\Http\Controllers\API\TmarReport\TmarSummaryController;
 use App\Http\Controllers\API\UserManagement\PermissionController;
 use App\Http\Controllers\API\UserManagement\SystemManagementController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
+use App\Http\Controllers\API\Ratings\RatingController;
 
 // Experimental route
 Route::match(['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], '/proxy', [ProxyController::class, 'handle']);
@@ -82,9 +84,32 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/sync', [PayRateController::class, 'sync']);
     });
 
+     // Star Status Routes
+     Route::prefix('star-status')->group(function () {
+        Route::get('/', [StarStatusController::class, 'index']);
+        Route::post('/', [StarStatusController::class, 'store']);
+        Route::put('/{id}', [StarStatusController::class, 'update']);
+        Route::delete('/{id}', [StarStatusController::class, 'destroy']);
+        Route::get('/search/{status}', [StarStatusController::class, 'search']);
+    });
+
+    // TMAR Reports Routes
+
+    Route::prefix('tmar-summary')->group(function () {
+        Route::get('/', [TmarSummaryController::class, 'index']);
+    });
+
     // Star Status
     Route::apiResource('star-status', StarStatusController::class);
+
+    Route::prefix('store-employees/{storeEmployeeId}/ratings')->group(function () {
+        Route::get('/', [RatingController::class, 'index']);
+        Route::get('{ratingId}', [RatingController::class, 'show']);
+        Route::post('/', [RatingController::class, 'store']);
+        Route::put('{ratingId}', [RatingController::class, 'update']);
+    });
 });
+
 
 Route::fallback(function(){
     return response()->json([
