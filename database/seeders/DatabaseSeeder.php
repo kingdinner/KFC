@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             LeaveSeeder::class,
             PayRateSeeder::class,
             StarStatusSeeder::class,
+            TmarSummarySeeder::class,
+            RatingSeeder::class,
         ]);
     }
 }

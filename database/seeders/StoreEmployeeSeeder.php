@@ -18,7 +18,7 @@ class StoreEmployeeSeeder extends Seeder
         $faker = Faker::create();
 
         // Get all stores and employees
-        $stores = Store::all();
+        $stores = Store::whereIn('id', [1, 2])->get(); // Filter stores with IDs 1 and 2
         $employees = Employee::all();
 
         // Ensure there are stores and employees before seeding
@@ -29,10 +29,10 @@ class StoreEmployeeSeeder extends Seeder
 
         // Create assignments
         foreach ($employees as $employee) {
-            $store = $stores->random();
+            $store = $stores->random(); // Randomly select a store with ID 1 or 2
 
             StoreEmployee::create([
-                'store_id' => 1,
+                'store_id' => $store->id, // Assign store_id dynamically
                 'employee_id' => $employee->id,
                 'start_date' => $faker->dateTimeBetween('-2 years', 'now'),
                 'end_date' => $faker->optional(0.3)->dateTimeBetween('now', '+1 year'), // 30% chance of having an end date

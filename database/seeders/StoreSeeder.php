@@ -15,14 +15,18 @@ class StoreSeeder extends Seeder
     {
         $faker = Faker::create();
 
-        // Generate 10 fake stores
-        for ($i = 0; $i < 10; $i++) {
+        // Generate store codes from '101' to '111'
+        $storeCodes = range(101, 111);
+
+        foreach ($storeCodes as $storeCode) {
             Store::create([
                 'name' => $faker->company,
-                'cost_center' => 'CC-' . $faker->randomNumber(5, true),
+                'cost_center' => 'CC-' . $faker->unique()->randomNumber(5, true),
                 'asset_type' => $faker->randomElement(['Retail', 'Warehouse', 'Office']),
-                'store_code' => strtoupper($faker->bothify('STR-####')),
+                'store_code' => (string) $storeCode, // Convert to string if needed
             ]);
         }
+
+        $this->command->info('Stores seeded successfully with store codes from 101 to 111.');
     }
 }

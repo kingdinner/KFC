@@ -59,4 +59,7 @@ class Employee extends Model
     {
         return $this->hasMany(BorrowTeamMember::class, 'employee_id');
     }
+    public function payRates(){
+        return $this->hasMany(PayRate::class);
+    }
 }

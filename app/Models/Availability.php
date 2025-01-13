@@ -9,7 +9,9 @@ class Availability extends Model
 {
     use HasFactory;
 
-    protected $table = 'availability';
+    protected $table = 'availability'; // Ensure this matches your actual table name
+
+    public $timestamps = false; // Disable timestamps if not present in the table
 
     protected $fillable = [
         'store_employee_id',
@@ -18,8 +20,11 @@ class Availability extends Model
         'reason',
     ];
 
+    /**
+     * Define the relationship with the StoreEmployee model.
+     */
     public function storeEmployee()
     {
-        return $this->belongsTo(StoreEmployee::class);
+        return $this->belongsTo(StoreEmployee::class, 'store_employee_id');
     }
 }

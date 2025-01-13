@@ -71,31 +71,36 @@ class StoreController extends Controller
         ], 200);
     }
 
-    public function search($storeName)
+    public function search($storeName = null)
     {
         $storeName = trim($storeName);
-
+    
         if (empty($storeName)) {
+            // Return all stores if no storeName is provided
+            $stores = Store::all();
             return response()->json([
-                'success' => false,
-                'message' => 'Store name parameter is required'
-            ], 400);
+                'success' => true,
+                'data' => $stores,
+            ], 200);
         }
-
+    
+        // Perform a search
         $stores = Store::where('name', 'LIKE', "%{$storeName}%")
                     ->orWhere('store_code', 'LIKE', "%{$storeName}%")
                     ->get();
-
+    
         if ($stores->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'No stores found for the given store name'
+                'message' => 'No stores found for the given search term.',
             ], 404);
         }
-
+    
         return response()->json([
             'success' => true,
-            'data' => $stores
+            'data' => $stores,
         ], 200);
     }
+    
+
 }

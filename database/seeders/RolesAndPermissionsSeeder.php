@@ -22,6 +22,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $roleAdmin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guardName]);
         $roleManager = Role::firstOrCreate(['name' => 'manager', 'guard_name' => $guardName]);
         $roleTeamMember = Role::firstOrCreate(['name' => 'team-member', 'guard_name' => $guardName]);
+        $roleTeamLeader = Role::firstOrCreate(['name' => 'team-leader', 'guard_name' => $guardName]);
 
         // Define the permissions and actions for User Management and Labor Management
         $permissions = [
@@ -68,6 +69,12 @@ class RolesAndPermissionsSeeder extends Seeder
                     'role_id' => $roleTeamMember->id,
                     'permission_array' => ['read','edit'],  // Managers might only have 'read' access
                 ]);
+
+                PermissionRoleDetail::create([
+                    'permission_id' => $permission->id,
+                    'role_id' => $roleTeamLeader->id,
+                    'permission_array' => ['read','edit'],  // Managers might only have 'read' access
+                ]);
         }
 
         // Fetch all permissions again (including newly created ones)
@@ -84,6 +91,10 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         $roleTeamMember->syncPermissions([
+            Permission::where('name', 'Archive Users')->first(),
+        ]);
+        
+        $roleTeamLeader->syncPermissions([
             Permission::where('name', 'Archive Users')->first(),
         ]);
     }

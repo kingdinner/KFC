@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\PayRate;
 use App\Models\StarStatus;
 use App\Models\Employee;
+use App\Models\Rating;
 class StoreEmployee extends Model
 {
     use HasFactory;
@@ -34,5 +35,10 @@ class StoreEmployee extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
     }
 }

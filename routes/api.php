@@ -12,6 +12,8 @@ use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
+use App\Http\Controllers\API\TMAR\TmarReportController;
+use App\Http\Controllers\API\TMAR\RatingController;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -80,8 +82,8 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Stores
+    Route::get('stores/search/{storeName?}', [StoreController::class, 'search']);
     Route::apiResource('stores', StoreController::class);
-    Route::get('stores/search/{storeName}', [StoreController::class, 'search']);
 
     // Pay Rates
     Route::prefix('pay-rates')->group(function () {
@@ -90,8 +92,24 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Star Status
-    Route::apiResource('star-status', StarStatusController::class);
-    Route::get('/search/{status}', [StarStatusController::class, 'search']);
+    Route::prefix('star-status')->group(function () {
+        Route::get('/', [StarStatusController::class, 'index']);
+        Route::post('/', [StarStatusController::class, 'store']);
+        Route::put('/{id}', [StarStatusController::class, 'update']);
+        Route::delete('/{id}', [StarStatusController::class, 'destroy']);
+        Route::get('/search/{status}', [StarStatusController::class, 'search']);
+    });
+
+    Route::prefix('tmar-summary')->group(function () {
+        Route::get('/', [TmarReportController::class, 'index']);
+    });
+
+    Route::prefix('store-employees/{storeEmployeeId}/ratings')->group(function () {
+        Route::get('/', [RatingController::class, 'index']);
+        Route::get('{ratingId}', [RatingController::class, 'show']);
+        Route::post('/', [RatingController::class, 'store']);
+        Route::put('{ratingId}', [RatingController::class, 'update']);
+    });
 });
 
 // remove this in production

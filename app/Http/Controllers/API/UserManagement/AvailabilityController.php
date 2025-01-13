@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\UserManagement;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use App\Models\StoreEmployee;
 use Illuminate\Http\Request;
 use App\Traits\HandlesAvailability;
 use Carbon\Carbon;
@@ -15,24 +16,84 @@ class AvailabilityController extends Controller
     {
         $perPage = $request->input('per_page', 10);
         $page = $request->input('page', 1);
-
-        // Fetch availability and leave data for all employees in the current page
-        $storeEmployeeIds = Availability::pluck('store_employee_id')->unique();
-
-        $availability = collect();
-        foreach ($storeEmployeeIds as $storeEmployeeId) {
-            $availability = $availability->merge(
-                $this->getAvailabilityAndLeaves($storeEmployeeId, Carbon::now()->format('Y-m'), $perPage, $page)
-            );
+        $month = $request->input('month', Carbon::now()->format('Y-m'));
+        $storeId = $request->input('store_id');
+    
+        // Validate the store_id parameter
+        $request->validate([
+            'store_id' => 'required|exists:stores,id',
+        ]);
+    
+        // Fetch store employee IDs for the specified store
+        $storeEmployeeIds = StoreEmployee::where('store_id', $storeId)
+            ->pluck('id')
+            ->unique();
+    
+        \Log::info('Store Employee IDs for Store ID ' . $storeId . ': ', $storeEmployeeIds->toArray());
+    
+        if ($storeEmployeeIds->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'No employees found for this store.',
+            ]);
         }
-
+    
+        // Paginate the employee IDs
+        $paginatedEmployeeIds = $storeEmployeeIds->forPage($page, $perPage);
+    
+        // Collect availability and leave data for the current page
+        $availability = $paginatedEmployeeIds->map(function ($storeEmployeeId) use ($month) {
+            $data = $this->getAvailabilityAndLeaves($storeEmployeeId, $month);
+    
+            $startOfMonth = Carbon::parse($month)->startOfMonth();
+            $endOfMonth = Carbon::parse($month)->endOfMonth();
+    
+            // Collect all dates in the month
+            $allDates = [];
+            for ($date = $startOfMonth; $date->lte($endOfMonth); $date->addDay()) {
+                $allDates[$date->toDateString()] = [
+                    'is_available' => true,
+                    'reason' => null
+                ]; // Default to available
+            }
+    
+            // Process unavailable dates if $data is not empty
+            if (!empty($data) && is_iterable($data)) {
+                foreach ($data as $item) {
+                    if (isset($item['date']) && array_key_exists($item['date'], $allDates)) {
+                        $allDates[$item['date']] = [
+                            'is_available' => false,
+                            'reason' => $item['reason'] ?? 'No reason provided' // Add reason if available
+                        ];
+                    }
+                }
+            }
+    
+            // Separate available and unavailable dates
+            $availableDates = array_keys(array_filter($allDates, fn($entry) => $entry['is_available']));
+            $unavailableDates = array_filter($allDates, fn($entry) => !$entry['is_available']);
+    
+            return [
+                'store_employee_id' => $storeEmployeeId,
+                'month' => $month,
+                'available_dates' => $availableDates,
+                'unavailable_dates' => array_map(fn($date, $info) => [
+                    'date' => $date,
+                    'reason' => $info['reason']
+                ], array_keys($unavailableDates), $unavailableDates)
+            ];
+        });
+    
         return response()->json([
             'success' => true,
             'data' => $availability,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $storeEmployeeIds->count(),
         ]);
     }
-
-
+    
     /**
      * Store a newly created availability record.
      */
@@ -60,37 +121,62 @@ class AvailabilityController extends Controller
     public function show(Request $request, $id)
     {
         $storeEmployeeId = $request->input('store_employee_id');
-        $month = $request->input('month'); // Format: YYYY-MM
+        $month = $request->input('month', Carbon::now()->format('Y-m'));
         $perPage = $request->input('per_page', 10);
         $page = $request->input('page', 1);
 
         // Validate inputs
-        $validated = $request->validate([
+        $request->validate([
             'store_employee_id' => 'required|exists:store_employees,id',
             'month' => 'required|date_format:Y-m',
         ]);
 
-        // Get paginated availability and leave data
-        $availability = $this->getAvailabilityAndLeaves($storeEmployeeId, $month, $perPage, $page);
+        // Fetch availability and leave data for the store employee
+        $data = $this->getAvailabilityAndLeaves($storeEmployeeId, $month, $perPage, $page);
 
-        // If no availability or leave records exist for the month
-        if ($availability->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'store_employee_id' => $storeEmployeeId,
-                    'month' => $month,
-                    'is_available' => true,
-                    'reason' => 'Entire month is available.',
-                ],
-            ]);
+        $startOfMonth = Carbon::parse($month)->startOfMonth();
+        $endOfMonth = Carbon::parse($month)->endOfMonth();
+
+        // Collect all dates in the month
+        $allDates = [];
+        for ($date = $startOfMonth; $date->lte($endOfMonth); $date->addDay()) {
+            $allDates[$date->toDateString()] = [
+                'is_available' => true,
+                'reason' => null
+            ]; // Default to available
         }
 
+        // Process unavailable dates if $data is not empty
+        if (!empty($data) && is_iterable($data)) {
+            foreach ($data as $item) {
+                if (isset($item['date']) && array_key_exists($item['date'], $allDates)) {
+                    $allDates[$item['date']] = [
+                        'is_available' => false,
+                        'reason' => $item['reason'] ?? 'No reason provided' // Add reason if available
+                    ];
+                }
+            }
+        }
+
+        // Separate available and unavailable dates
+        $availableDates = array_keys(array_filter($allDates, fn($entry) => $entry['is_available']));
+        $unavailableDates = array_filter($allDates, fn($entry) => !$entry['is_available']);
+
+        // Format the response
         return response()->json([
             'success' => true,
-            'data' => $availability,
+            'data' => [
+                'store_employee_id' => $storeEmployeeId,
+                'month' => $month,
+                'available_dates' => $availableDates,
+                'unavailable_dates' => array_map(fn($date, $info) => [
+                    'date' => $date,
+                    'reason' => $info['reason']
+                ], array_keys($unavailableDates), $unavailableDates),
+            ],
         ]);
     }
+
 
     
     

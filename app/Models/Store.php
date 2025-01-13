@@ -14,13 +14,17 @@ class Store extends Model
         'name',
         'cost_center',
         'asset_type',
-        'store_code',
-        'location',
+        'store_code'
     ];
 
     public function employees()
     {
         return $this->hasMany(Employee::class);
     }
+
+    public function employeesThroughStore()
+{
+    return $this->hasManyThrough(Employee::class, StoreEmployee::class, 'store_id', 'id', 'id', 'employee_id');
+}
 
 }
