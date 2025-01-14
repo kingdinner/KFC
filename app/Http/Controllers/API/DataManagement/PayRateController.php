@@ -25,7 +25,7 @@ class PayRateController extends Controller
                     'hourly_rate' => $payRate->hourly_rate,
                     'employee_name' => optional($payRate->storeEmployee->employee)->firstname 
                         . ' ' . optional($payRate->storeEmployee->employee)->lastname,
-                    'store_id' => optional($payRate->storeEmployee)->store_id,
+                    'store_number' => optional($payRate->storeEmployee)->store_number,
                 ];
             });
 

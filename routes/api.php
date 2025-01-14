@@ -36,18 +36,22 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/hr-rule', [HRFAQController::class, 'storeOrUpdateHRRule']);
 
     // User Management
-    Route::apiResource('/users', SystemManagementController::class)->only(['store']);
-    Route::put('/users/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
-    Route::post('/users/change-password', [SystemManagementController::class, 'resetPassword']);
-    Route::post('/users/forgot-password', [SystemManagementController::class, 'forgotPassword']);
-    Route::get('/users/{id}', [SystemManagementController::class, 'findEmployeeById']);
-    Route::put('/users/update/{id}', [SystemManagementController::class, 'update']);
-    Route::get('/users', [SystemManagementController::class, 'show']);
-    Route::put('/users/{userid}/assign-roles', [SystemManagementController::class, 'assignOrEditRoles']);
+    Route::prefix('users')->group(function () {
+        Route::put('/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
+        Route::post('/change-password', [SystemManagementController::class, 'resetPassword']);
+        Route::get('/{id}', [SystemManagementController::class, 'findEmployeeById']);
+        Route::put('/update/{id}', [SystemManagementController::class, 'update']);
+        Route::put('/{id}/role', [SystemManagementController::class, 'assignOrEditRoles']);
+        Route::apiResource('/', SystemManagementController::class)->only(['store']);
+    });
 
     // Roles
-    Route::apiResource('/roles', SystemManagementController::class)->except(['create', 'edit']);
-
+    Route::prefix('roles')->group(function () {
+        Route::get('/', [SystemManagementController::class, 'getRoles']);
+        Route::post('/', [SystemManagementController::class, 'assignOrUpdate']);
+        Route::delete('/', [SystemManagementController::class, 'deleteRole']);
+    });
+    
     // Approval
     Route::post('/leaves/{leave}/action', [LeaveController::class, 'handleLeaveAction']);
     Route::post('/borrow-team-members/{borrowTeamMember}/action', [BorrowTeamMemberController::class, 'handleBorrowRequestAction']);
@@ -82,6 +86,7 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Stores
+    Route::put('/stores/{store_code}', [StoreController::class, 'update']);
     Route::get('stores/search/{storeName?}', [StoreController::class, 'search']);
     Route::apiResource('stores', StoreController::class);
 

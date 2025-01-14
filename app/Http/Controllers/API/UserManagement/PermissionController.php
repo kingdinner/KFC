@@ -56,9 +56,9 @@ class PermissionController extends Controller
         // Validate the request data
         $validatedData = $request->validate([
             'name' => 'required|string|unique:permissions,name',
-            'roles' => 'required|array',
+            'roles' => 'required|array|min:1',
             'roles.*.role_id' => 'required|integer|exists:roles,id',
-            'roles.*.actions' => 'required|array',
+            'roles.*.actions' => 'required|array|min:1',
         ]);
 
         // Create the new permission
@@ -75,27 +75,27 @@ class PermissionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Permission created successfully',
+            'message' => 'Permission created successfully.',
             'data' => $permission,
         ], 201);
     }
 
-    public function update(Request $request, Permission $permission): JsonResponse
+
+    public function update(Request $request, $id): JsonResponse
     {
+        // Find the permission by ID
+        $permission = Permission::findOrFail($id);
+
         // Validate the request data
         $validatedData = $request->validate([
-            'name' => 'required|string|unique:permissions,name,' . $permission->id,
-            'roles' => 'required|array',
+            'roles' => 'required|array|min:1',
             'roles.*.role_id' => 'required|integer|exists:roles,id',
-            'roles.*.actions' => 'required|array',
+            'roles.*.actions' => 'required|array|min:1',
         ]);
-
-        // Update the permission name
-        $permission->update(['name' => $validatedData['name']]);
 
         // Update roles and actions for this permission
         foreach ($validatedData['roles'] as $roleData) {
-            $permissionDetail = PermissionRoleDetail::updateOrCreate(
+            PermissionRoleDetail::updateOrCreate(
                 [
                     'permission_id' => $permission->id,
                     'role_id' => $roleData['role_id'],
@@ -108,10 +108,13 @@ class PermissionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Permission updated successfully',
+            'message' => 'Permission updated successfully.',
             'data' => $permission,
         ]);
     }
+
+
+
 
 
 }

@@ -150,33 +150,29 @@ class SystemManagementController extends Controller
 
     public function assignOrUpdate(Request $request)
     {
-        // Validate the request data
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'new_name' => 'nullable|string|max:255|unique:roles,name', // Optional for updating the role name
         ]);
-    
-        // Check if the role already exists by name
-        $role = Role::where('name', $validated['name'])->where('guard_name', 'api')->first();
-    
-        if ($role) {
-            // If the role exists, update it with the new name if provided
+
+        // Find or create the role
+        $role = Role::firstOrNew(['name' => $validated['name'], 'guard_name' => 'api']);
+
+        if ($role->exists) {
+            // If updating, apply the new name
             $role->name = $validated['new_name'] ?? $role->name;
             $role->save();
-    
+
             $message = 'Role updated successfully';
             $status = 200;
         } else {
-            // If the role does not exist, create it
-            $role = Role::create([
-                'name' => $validated['name'],
-                'guard_name' => 'api',
-            ]);
-    
+            // Save the new role
+            $role->save();
+
             $message = 'Role created successfully';
             $status = 201;
         }
-    
+
         return response()->json([
             'success' => true,
             'message' => $message,
@@ -184,50 +180,59 @@ class SystemManagementController extends Controller
         ], $status);
     }
 
-    public function assignOrEditRoles(Request $request, AuthenticationAccount $userid)
+    public function assignOrEditRoles(Request $request, $id)
     {
+        // Validate the incoming request
         $validated = $request->validate([
-            'roles' => 'required|string|exists:roles,name' // Validate 'roles' as a single string and ensure it exists in the 'roles' table
+            'role' => 'required|string|exists:roles,name', // Validate that the role exists in the roles table
         ]);
-        
-        // Retrieve the role to assign
-        $role = Role::where('name', $validated['roles'])->first();
-        if (!$role) {
-            return response()->json(['message' => 'No valid role found'], 404);
+
+        // Find the user by ID
+        $user = AuthenticationAccount::findOrFail($id);
+
+        try {
+            // Remove all existing roles and assign the new role
+            $user->syncRoles([$validated['role']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User role updated successfully.',
+                'assigned_role' => $validated['role'], // Return the newly assigned role
+            ], 200);
+        } catch (\Exception $e) {
+            // Handle unexpected errors
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update user role.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-        
-        // Sync the role with the user (this will replace any existing roles)
-        $userid->syncRoles([$role]);
-        
-        return response()->json([
-            'message' => 'Role has been assigned/updated successfully',
-            'assigned_role' => $role->name  // Return the assigned role
-        ]);
-        
-    }    
+    }
+
+
 
     public function updatePermission(Request $request)
     {
-        // Ensure the authenticated user has permission to give permissions
-        if (auth()->user()->cannot('grant-permissions')) {
-            return response()->json(['message' => 'Forbidden: You do not have permission to grant permissions'], 403);
-        }
+        $validated = $request->validate([
+            'user_id' => 'required|exists:authentication_accounts,id', // Ensure the user exists
+            'permission_name' => 'required|string|exists:permissions,name', // Ensure the permission exists
+        ]);
 
-        // Find the user and permission
-        $user = AuthenticationAccount::find($request->user_id);
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
+        $user = AuthenticationAccount::findOrFail($validated['user_id']);
+        $permission = Permission::findByName($validated['permission_name']);
 
-        $permission = Permission::findByName($request->permission_name);
-        if (!$permission) {
-            return response()->json(['message' => 'Permission not found'], 404);
+        if ($user->can($permission->name)) {
+            return response()->json(['message' => 'User already has this permission'], 200);
         }
 
         // Grant the permission
         $user->givePermissionTo($permission);
 
-        return response()->json(['message' => 'Permission granted successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Permission granted successfully',
+            'permission' => $permission->name,
+        ], 200);
     }
 
     public function show(Request $request)
@@ -450,33 +455,34 @@ class SystemManagementController extends Controller
     public function deleteRole(Request $request)
     {
         $request->validate([
-            'role_name' => 'required|exists:roles,name',
+            'role_id' => 'required|exists:roles,id', // Validate the role ID
         ]);
-    
-        // Find the role by name
-        $role = Role::where('name', $request->role_name)->firstOrFail();
-    
-        // Prevent deletion of admin and super admin roles
-        if (in_array($role->name, ['super admin'])) {
+
+        // Find the role by ID
+        $role = Role::findOrFail($request->role_id);
+
+        // Prevent deletion of admin and super-admin roles
+        if (in_array($role->name, ['super-admin', 'admin'])) {
             return response()->json([
-                'message' => 'The admin and super admin roles cannot be deleted.'
+                'message' => 'The admin and super-admin roles cannot be deleted.'
             ], 403);
         }
-    
+
         // Check if any users are assigned to this role
         if ($role->users()->exists()) {
             return response()->json([
                 'message' => 'Role cannot be deleted because it is assigned to one or more users.'
             ], 403);
         }
-    
+
         // If no users are assigned, delete the role
         $role->delete();
-    
+
         return response()->json([
             'message' => 'Role has been successfully deleted.'
-        ]);
+        ], 200);
     }
+
 
     private function fetchExternal()
     {
@@ -521,45 +527,4 @@ class SystemManagementController extends Controller
             ],
         ];        
     }
-
-    //change this to sync upon receive API
-    // public function createAccountForEmployee(Request $request)
-    // {
-    //     $request->validate([
-    //         'employee_id' => 'required|exists:employees,id',
-    //         'email' => 'required|email|unique:authentication_accounts,email',
-    //         'role' => 'required|exists:roles,name',
-    //     ]);
-
-    //     // Find the employee by ID
-    //     $employee = Employee::findOrFail($request->employee_id);
-
-    //     // Check if the employee already has an account
-    //     if ($employee->authenticationAccount) {
-    //         return response()->json([
-    //             'message' => 'This employee already has an account.'
-    //         ], 409);
-    //     }
-
-    //     // Generate a temporary password
-    //     $temporaryPassword = Str::random(12);
-
-    //     // Create a new account for the employee
-    //     $account = AuthenticationAccount::create([
-    //         'employee_id' => $employee->id,
-    //         'email' => $request->email,
-    //         'password' => Hash::make($temporaryPassword),
-    //     ]);
-
-    //     // Assign the role to the account
-    //     $account->assignRole($request->role);
-
-    //     // Send account creation email with temporary password
-    //     Mail::to($account->email)->send(new AccountCreatedMail($account, $temporaryPassword));
-
-    //     return response()->json([
-    //         'message' => 'Account successfully created and email sent to employee.',
-    //         'account' => $account
-    //     ]);
-    // }
 }
