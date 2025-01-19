@@ -6,14 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\BorrowTeamMember;
 use Illuminate\Http\Request;
 use App\Traits\HandlesApprovals;
+use App\Traits\HandlesHelperController;
 
 class BorrowTeamMemberController extends Controller
 {
-    use HandlesApprovals;
+    use HandlesApprovals, HandlesHelperController;
 
-    /**
-     * Handle Borrow Request Action
-     */
     public function handleBorrowRequestAction(Request $request, BorrowTeamMember $borrowTeamMember)
     {
         return $this->handleApproval($request, $borrowTeamMember, 'Borrow Team Member');
@@ -33,37 +31,38 @@ class BorrowTeamMemberController extends Controller
     {
         return $this->index($request, 'borrow');
     }
-    /**
-     * Display all borrowed team members with relationships based on endpoint.
-     */
+
     public function index(Request $request, $borrowType)
     {
-        // Fetch borrowed team members with pagination
-        $perPage = $request->input('per_page', 10);  // Default to 10 records per page
-        $borrowedMembers = BorrowTeamMember::with([
+        $perPage = $request->input('per_page', 10);
+        $search = $request->input('search');
+
+        $borrowedMembersQuery = BorrowTeamMember::with([
             'employee:id,firstname,lastname',
             'borrowedStore:id,name',
             'transferredStore:id,name',
-        ])
-        ->where('borrow_type', $borrowType)
-        ->paginate($perPage);
+        ])->where('borrow_type', $borrowType);
 
-        // Format and return paginated response
-        return response()->json([
-            'success' => true,
-            'current_page' => $borrowedMembers->currentPage(),
-            'total_pages' => $borrowedMembers->lastPage(),
-            'total_records' => $borrowedMembers->total(),
-            'data' => $borrowedMembers->map(fn($member) => $this->formatBorrowData($member)),
-        ]);
+        if ($search) {
+            $borrowedMembersQuery->whereHas('employee', function ($query) use ($search) {
+                $query->where('firstname', 'like', '%' . $search . '%')
+                      ->orWhere('lastname', 'like', '%' . $search . '%');
+            })
+            ->orWhereHas('borrowedStore', function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->orWhereHas('transferredStore', function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            });
+        }
+
+        $borrowedMembers = $borrowedMembersQuery->paginate($perPage);
+
+        return $this->paginateResponse($borrowedMembers);
     }
 
-    /**
-     * Create a Borrow Team Member Request
-     */
     public function createBorrowRequest(Request $request)
     {
-        // Validate incoming request
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'borrowed_store_id' => 'required|exists:stores,id',
@@ -74,7 +73,6 @@ class BorrowTeamMemberController extends Controller
             'reason' => 'required|string|max:255',
         ]);
 
-        // Create the borrow request
         $borrowRequest = BorrowTeamMember::create([
             'employee_id' => $validated['employee_id'],
             'borrowed_store_id' => $validated['borrowed_store_id'],
@@ -82,7 +80,7 @@ class BorrowTeamMemberController extends Controller
             'borrowed_time' => $validated['borrowed_time'],
             'borrow_type' => $validated['borrow_type'],
             'skill_level' => $validated['skill_level'],
-            'status' => 'Pending', 
+            'status' => 'Pending',
             'reason' => $validated['reason'],
         ]);
 
@@ -92,9 +90,6 @@ class BorrowTeamMemberController extends Controller
         ], 201);
     }
 
-    /**
-     * Format Borrow Team Member Data
-     */
     private function formatBorrowData($member)
     {
         return [
@@ -120,9 +115,6 @@ class BorrowTeamMemberController extends Controller
         ];
     }
 
-    /**
-     * Generate Employee Full Name
-     */
     private function getEmployeeFullName($member)
     {
         return optional($member->employee)->firstname . ' ' . optional($member->employee)->lastname;

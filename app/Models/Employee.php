@@ -46,10 +46,13 @@ class Employee extends Model
      */
     public function roles()
     {
-        return $this->belongsToMany(Role::class, 'employee_roles')
-            ->withPivot('assigned_at')
-            ->withTimestamps();
+        if (\Schema::hasTable('employee_roles')) {
+            return $this->belongsToMany(Role::class, 'employee_roles')
+                ->withPivot('assigned_at')
+                ->withTimestamps();
+        }
     }
+    
 
     public function leaves()
     {

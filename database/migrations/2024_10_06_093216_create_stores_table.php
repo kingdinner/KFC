@@ -15,9 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('cost_center');
+            $table->string('level');
+            $table->string('costcenter_text');
+            $table->string('Area');
             $table->string('asset_type');
             $table->string('store_code')->unique();
-            $table->softDeletes();  // Soft delete added
+            $table->string('operating_hours');
+            $table->softDeletes();
             $table->timestamps();
         }); 
     }

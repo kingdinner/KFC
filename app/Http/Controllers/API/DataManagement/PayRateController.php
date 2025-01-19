@@ -4,41 +4,45 @@ namespace App\Http\Controllers\API\DataManagement;
 
 use App\Http\Controllers\Controller;
 use App\Models\PayRate;
+use App\Traits\HandlesHelperController;
+use Illuminate\Http\Request;
 
 class PayRateController extends Controller
 {
-    /**
-     * Display a listing of the pay rates along with store and employee details.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    use HandlesHelperController;
+    public function index(Request $request)
     {
-        try {
-            $payRates = PayRate::with('storeEmployee.employee')->get();
+        $search = trim($request->input('search', ''));
+        $perPage = (int) $request->input('per_page', 10);
 
-            $formattedPayRates = $payRates->map(function ($payRate) {
-                return [
-                    'pay_rate_id' => $payRate->id,
-                    'position' => $payRate->position,
-                    'rate_label' => $payRate->rate_label,
-                    'hourly_rate' => $payRate->hourly_rate,
-                    'employee_name' => optional($payRate->storeEmployee->employee)->firstname 
-                        . ' ' . optional($payRate->storeEmployee->employee)->lastname,
-                    'store_number' => optional($payRate->storeEmployee)->store_number,
-                ];
+        $payRatesQuery = PayRate::with('storeEmployee.employee');
+
+        if (!empty($search)) {
+            $payRatesQuery->where(function ($query) use ($search) {
+                $query->where('position', 'ILIKE', "%{$search}%")
+                      ->orWhere('rate_label', 'ILIKE', "%{$search}%")
+                      ->orWhereHas('storeEmployee.employee', function ($employeeQuery) use ($search) {
+                          $employeeQuery->where('firstname', 'ILIKE', "%{$search}%")
+                                        ->orWhere('lastname', 'ILIKE', "%{$search}%");
+                      });
             });
-
-            return response()->json([
-                'success' => true,
-                'data' => $formattedPayRates,
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve pay rates',
-            ], 500);
         }
+
+        $paginatedPayRates = $payRatesQuery->paginate($perPage);
+
+        $formattedPayRates = $paginatedPayRates->getCollection()->map(function ($payRate) {
+            return [
+                'pay_rate_id' => $payRate->id,
+                'position' => $payRate->position,
+                'rate_label' => $payRate->rate_label,
+                'hourly_rate' => $payRate->hourly_rate,
+                'employee_name' => optional($payRate->storeEmployee->employee)->firstname 
+                    . ' ' . optional($payRate->storeEmployee->employee)->lastname,
+                'store_number' => optional($payRate->storeEmployee)->store_number,
+            ];
+        });
+
+        return $this->paginateResponse($paginatedPayRates->setCollection($formattedPayRates));
     }
 
     /**

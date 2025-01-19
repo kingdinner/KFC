@@ -14,7 +14,11 @@ class Store extends Model
         'name',
         'cost_center',
         'asset_type',
-        'store_code'
+        'store_code',
+        'level',
+        'costcenter_text',
+        'Area',
+        'operating_hours',
     ];
 
     public function employees()

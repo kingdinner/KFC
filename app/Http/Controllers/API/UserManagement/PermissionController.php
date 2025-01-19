@@ -3,34 +3,47 @@
 namespace App\Http\Controllers\API\Usermanagement;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HandlesHelperController;
 use Illuminate\Http\Request;
 use App\Models\Permission;
 use Illuminate\Http\JsonResponse;
 use App\Models\PermissionRoleDetail;
 
+use Illuminate\Pagination\LengthAwarePaginator;
 class PermissionController extends Controller
 {
-    /**
-     * Check if the authenticated user has a specific permission and action.
-     *
-     * @param  Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function index(): JsonResponse
+
+    use HandlesHelperController;    
+    public function index(Request $request): JsonResponse
     {
-        $permissions = Permission::with(['permissionRoleDetails.role'])->get();
+        $search = $request->query('search');
+        $perPage = $request->query('per_page', 10);
     
-        $permissionsData = $permissions->flatMap(function ($permission) {
-            return $permission->permissionRoleDetails->map(function ($detail) use ($permission) {
-                return [
-                    'rolename' => $detail->role->name, // Role name
-                    'name' => $permission->name,      // Permission name
-                    'Permission' => [
-                        'view' => in_array('read', $detail->permission_array), // Check 'read' access
-                        'edit' => in_array('edit', $detail->permission_array), // Check 'edit' access
-                    ],
-                ];
+        $permissionsQuery = Permission::with(['permissionRoleDetails.role']);
+    
+        if ($search) {
+            $permissionsQuery->whereHas('permissionRoleDetails.role', function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
             });
+        }
+    
+        $permissions = $permissionsQuery->get();
+    
+        $permissionsData = $permissions->flatMap(function ($permission) use ($search) {
+            return $permission->permissionRoleDetails
+                ->filter(function ($detail) use ($search) {
+                    return !$search || stripos($detail->role->name, $search) !== false; 
+                })
+                ->map(function ($detail) use ($permission) {
+                    return [
+                        'rolename' => $detail->role->name, 
+                        'name' => $permission->name,
+                        'Permission' => [
+                            'view' => in_array('read', $detail->permission_array), 
+                            'edit' => in_array('edit', $detail->permission_array),
+                        ],
+                    ];
+                });
         });
     
         $groupedData = $permissionsData->groupBy('rolename')->map(function ($group, $rolename) {
@@ -45,10 +58,11 @@ class PermissionController extends Controller
             ];
         })->values();
     
-        return response()->json([
-            'success' => true,
-            'data' => $groupedData,
-        ]);
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $pagedData = collect($groupedData)->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $paginator = new LengthAwarePaginator($pagedData, $groupedData->count(), $perPage, $currentPage);
+    
+        return $this->paginateResponse($paginator);
     }
     
     public function store(Request $request): JsonResponse

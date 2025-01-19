@@ -7,13 +7,16 @@ use App\Http\Controllers\API\DataManagement\StoreController;
 use App\Http\Controllers\API\DataManagement\PayRateController;
 use App\Http\Controllers\API\DataManagement\StarStatusController;
 use App\Http\Controllers\API\UserManagement\PermissionController;
-use App\Http\Controllers\API\UserManagement\SystemManagementController;
+use App\Http\Controllers\API\UserManagement\RoleController;
+use App\Http\Controllers\API\UserManagement\UserController;
 use App\Http\Controllers\API\UserManagement\LeaveController;
 use App\Http\Controllers\API\UserManagement\BorrowTeamMemberController;
 use App\Http\Controllers\API\UserManagement\AvailabilityController;
 use App\Http\Controllers\API\ProxyController;
 use App\Http\Controllers\API\TMAR\TmarReportController;
 use App\Http\Controllers\API\TMAR\RatingController;
+
+use App\Http\Controllers\API\ScheduleManagement\LaborManagementController;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -32,24 +35,27 @@ Route::middleware('auth:api')->group(function () {
     Route::post('tokenKeepAlive', [AuthController::class, 'tokenKeepAlive']);
     Route::post('logout', [AuthController::class, 'logout']);
 
-    Route::post('/faq', [HRFAQController::class, 'storeOrUpdateFAQ']);
-    Route::post('/hr-rule', [HRFAQController::class, 'storeOrUpdateHRRule']);
+    Route::post('/faq', [HRFAQController::class, 'storeOrUpdateFAQ']); // For creating or uploading FAQs
+    Route::put('/faq/{id}', [HRFAQController::class, 'updateFAQ']); // For updating a specific FAQ by ID
+    Route::post('/hr-rule', [HRFAQController::class, 'storeOrUpdateHRRule']); // For creating or uploading HR rules
+    Route::put('/hr-rule/{id}', [HRFAQController::class, 'updateHRRule']); // For updating a specific HR Rule by ID
+    Route::delete('/faq/{id}', [HRFAQController::class, 'softDeleteFAQ']); // For soft-deleting an FAQ
+    Route::delete('/hr-rule/{id}', [HRFAQController::class, 'softDeleteHRRule']); // For soft-deleting an HR Rule    
 
     // User Management
-    Route::prefix('users')->group(function () {
-        Route::put('/toggle-lock/{userid}', [SystemManagementController::class, 'toggleUserLock']);
-        Route::post('/change-password', [SystemManagementController::class, 'resetPassword']);
-        Route::get('/{id}', [SystemManagementController::class, 'findEmployeeById']);
-        Route::put('/update/{id}', [SystemManagementController::class, 'update']);
-        Route::put('/{id}/role', [SystemManagementController::class, 'assignOrEditRoles']);
-        Route::apiResource('/', SystemManagementController::class)->only(['store']);
-    });
+    Route::apiResource('/users', UserController::class)->only(['store']);
+    Route::put('/users/toggle-lock/{userid}', [UserController::class, 'toggleUserLock']);
+    Route::post('/users/change-password', [UserController::class, 'resetPassword']);
+    Route::post('/users/forgot-password', [UserController::class, 'forgotPassword']);
+    Route::put('/users/update/{id}', [UserController::class, 'update']);
+    Route::get('/users', [UserController::class, 'show']);
+    Route::put('/users/{id}/role', [UserController::class, 'assignOrEditRoles']);
 
     // Roles
     Route::prefix('roles')->group(function () {
-        Route::get('/', [SystemManagementController::class, 'getRoles']);
-        Route::post('/', [SystemManagementController::class, 'assignOrUpdate']);
-        Route::delete('/', [SystemManagementController::class, 'deleteRole']);
+        Route::get('/', [RoleController::class, 'getRoles']);
+        Route::post('/', [RoleController::class, 'assignOrUpdate']);
+        Route::delete('/', [RoleController::class, 'deleteRole']);
     });
     
     // Approval
@@ -72,22 +78,14 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Delete Account
-    Route::middleware(['check.permission:Add/Edit User,delete'])->delete('/account/{id}/soft-delete', [SystemManagementController::class, 'softDelete']);
-    Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [SystemManagementController::class, 'restore']);
+    Route::middleware(['check.permission:Add/Edit User,delete'])->delete('/account/{id}/soft-delete', [UserController::class, 'softDelete']);
+    Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [UserController::class, 'restore']);
 
     // Permissions
     Route::apiResource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
 
-    // Archive Users
-    Route::controller(SystemManagementController::class)->group(function () {
-        Route::post('/users/archive', 'archive');
-        Route::put('/users/archive/update/{userid}', 'updateArchive');
-        Route::delete('/users/archive/delete/{userid}', 'destroyArchive');
-    });
-
     // Stores
     Route::put('/stores/{store_code}', [StoreController::class, 'update']);
-    Route::get('stores/search/{storeName?}', [StoreController::class, 'search']);
     Route::apiResource('stores', StoreController::class);
 
     // Pay Rates
@@ -115,6 +113,10 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/', [RatingController::class, 'store']);
         Route::put('{ratingId}', [RatingController::class, 'update']);
     });
+
+    // Labor Management
+    Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);
+    Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);
 });
 
 // remove this in production

@@ -3,19 +3,33 @@
 namespace App\Http\Controllers\API\DataManagement;
 
 use App\Models\Store;
+use App\Traits\HandlesHelperController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 class StoreController extends Controller
 {
-    public function index()     
-    {         
-        $stores = Store::paginate(10); // Adjust the number as needed
-        return response()->json([             
-            'success' => true,             
-            'data' => $stores         
-        ], 200);     
-    }  
+    use HandlesHelperController;
+    public function index(Request $request)
+    {
+        $search = trim($request->input('search', ''));
+        $perPage = (int) $request->input('per_page', 10);
+
+        $storesQuery = Store::query();
+
+        if (!empty($search)) {
+            $storesQuery->where(function ($query) use ($search) {
+                $query->where('name', 'ILIKE', "%{$search}%")
+                      ->orWhere('store_code', 'ILIKE', "%{$search}%")
+                      ->orWhere('cost_center', 'ILIKE', "%{$search}%")
+                      ->orWhere('asset_type', 'ILIKE', "%{$search}%");
+            });
+        }
+
+        $stores = $storesQuery->paginate($perPage);
+
+        return $this->paginateResponse($stores);
+    }
 
     public function store(Request $request)
     {
@@ -45,15 +59,6 @@ class StoreController extends Controller
         }
     }
 
-
-    public function show(Store $store)
-    {
-        return response()->json([
-            'success' => true,
-            'data' => $store
-        ], 200);
-    }
-
     public function update(Request $request, $store_code)
     {
         $request->validate([
@@ -65,7 +70,6 @@ class StoreController extends Controller
         // Find the store by store_code
         $store = Store::where('store_code', $store_code)->firstOrFail();
 
-        // Update the store with the provided data
         $store->update($request->only(['name', 'cost_center', 'asset_type']));
 
         return response()->json([
@@ -85,34 +89,4 @@ class StoreController extends Controller
             'message' => 'Store deleted successfully.'
         ], 200);
     }
-
-    public function search($storeName = null)     
-    {         
-        $storeName = trim($storeName);              
-
-        if (empty($storeName)) {             
-            $stores = Store::paginate(10); // Return paginated stores if no search term is provided             
-            return response()->json([                 
-                'success' => true,                 
-                'data' => $stores,             
-            ], 200);         
-        }              
-
-        $stores = Store::where('name', 'LIKE', "%{$storeName}%")                         
-                      ->orWhere('store_code', 'LIKE', "%{$storeName}%")                         
-                      ->paginate(10); // Paginate search results              
-
-        if ($stores->isEmpty()) {             
-            return response()->json([                 
-                'success' => false,                 
-                'message' => 'No stores found for the given search term.',             
-            ], 404);         
-        }              
-
-        return response()->json([             
-            'success' => true,             
-            'data' => $stores,         
-        ], 200);     
-    }    
-
 }

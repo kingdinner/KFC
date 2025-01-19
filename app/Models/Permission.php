@@ -13,4 +13,5 @@ class Permission extends SpatiePermission
     {
         return $this->hasMany(PermissionRoleDetail::class, 'permission_id');
     }
+    
 }

@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('hr_rules', function (Blueprint $table) {
             $table->id();
             $table->text('rule');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

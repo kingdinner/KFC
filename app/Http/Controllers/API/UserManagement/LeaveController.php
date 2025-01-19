@@ -73,23 +73,37 @@ class LeaveController extends Controller
 
     public function index(Request $request)
     {
-        // Set pagination with default values
-        $perPage = $request->input('per_page', 10);  // Default to 10 if not provided
-    
-        // Fetch leave records with employee relationships
-        $leaves = Leave::with([
+        $perPage = $request->input('per_page', 10); 
+        $search = $request->input('search');
+
+        $leavesQuery = Leave::with([
             'employee:id,firstname,lastname,email_address',
-        ])->paginate($perPage);
-    
-        // Format and return the response
+        ]);
+
+        if ($search) {
+            $leavesQuery->whereHas('employee', function ($query) use ($search) {
+                $query->where('firstname', 'like', '%' . $search . '%')
+                    ->orWhere('lastname', 'like', '%' . $search . '%')
+                    ->orWhere('email_address', 'like', '%' . $search . '%');
+            });
+        }
+
+        $leaves = $leavesQuery->paginate($perPage);
+
         return response()->json([
             'success' => true,
             'current_page' => $leaves->currentPage(),
             'total_pages' => $leaves->lastPage(),
             'total_records' => $leaves->total(),
-            'data' => $leaves->map(fn($leave) => $this->formatLeaveData($leave)),
+            'data' => $leaves->items(),
+            'pagination' => [
+                'per_page' => $leaves->perPage(),
+                'next_page_url' => $leaves->nextPageUrl(),
+                'prev_page_url' => $leaves->previousPageUrl(),
+            ],
         ]);
     }
+
 
     /**
      * Format Leave Member Data

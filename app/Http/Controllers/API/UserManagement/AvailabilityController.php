@@ -5,95 +5,95 @@ namespace App\Http\Controllers\API\UserManagement;
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
 use App\Models\StoreEmployee;
+use App\Traits\HandlesHelperController;
 use Illuminate\Http\Request;
 use App\Traits\HandlesAvailability;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 
 class AvailabilityController extends Controller
 {
-    use HandlesAvailability;
+    use HandlesAvailability, HandlesHelperController;
     public function index(Request $request)
     {
         $perPage = $request->input('per_page', 10);
-        $page = $request->input('page', 1);
         $month = $request->input('month', Carbon::now()->format('Y-m'));
         $storeId = $request->input('store_id');
-    
-        // Validate the store_id parameter
-        $request->validate([
-            'store_id' => 'required|exists:stores,id',
-        ]);
-    
-        // Fetch store employee IDs for the specified store
-        $storeEmployeeIds = StoreEmployee::where('store_id', $storeId)
-            ->pluck('id')
-            ->unique();
-    
-        \Log::info('Store Employee IDs for Store ID ' . $storeId . ': ', $storeEmployeeIds->toArray());
-    
-        if ($storeEmployeeIds->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-                'message' => 'No employees found for this store.',
-            ]);
+        $search = $request->input('search');
+
+        $storeEmployeeIdsQuery = StoreEmployee::with('employee:id,firstname,lastname');
+
+        // Apply store_id filter if provided
+        if ($storeId) {
+            $storeEmployeeIdsQuery->where('store_id', $storeId);
         }
-    
-        // Paginate the employee IDs
-        $paginatedEmployeeIds = $storeEmployeeIds->forPage($page, $perPage);
-    
-        // Collect availability and leave data for the current page
-        $availability = $paginatedEmployeeIds->map(function ($storeEmployeeId) use ($month) {
+
+        // Apply search filter if provided
+        if ($search) {
+            $storeEmployeeIdsQuery->whereHas('employee', function ($query) use ($search) {
+                $query->where('firstname', 'like', '%' . $search . '%')
+                    ->orWhere('lastname', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Paginate the results
+        $paginatedEmployeeIds = $storeEmployeeIdsQuery->paginate($perPage);
+
+        // Process availability data
+        $availability = collect($paginatedEmployeeIds->items())->map(function ($storeEmployee) use ($month) {
+            $storeEmployeeId = $storeEmployee->id;
             $data = $this->getAvailabilityAndLeaves($storeEmployeeId, $month);
-    
+
             $startOfMonth = Carbon::parse($month)->startOfMonth();
             $endOfMonth = Carbon::parse($month)->endOfMonth();
-    
-            // Collect all dates in the month
+
             $allDates = [];
             for ($date = $startOfMonth; $date->lte($endOfMonth); $date->addDay()) {
                 $allDates[$date->toDateString()] = [
                     'is_available' => true,
-                    'reason' => null
-                ]; // Default to available
+                    'reason' => null,
+                ];
             }
-    
-            // Process unavailable dates if $data is not empty
+
             if (!empty($data) && is_iterable($data)) {
                 foreach ($data as $item) {
                     if (isset($item['date']) && array_key_exists($item['date'], $allDates)) {
                         $allDates[$item['date']] = [
                             'is_available' => false,
-                            'reason' => $item['reason'] ?? 'No reason provided' // Add reason if available
+                            'reason' => $item['reason'] ?? 'No reason provided',
                         ];
                     }
                 }
             }
-    
-            // Separate available and unavailable dates
+
             $availableDates = array_keys(array_filter($allDates, fn($entry) => $entry['is_available']));
             $unavailableDates = array_filter($allDates, fn($entry) => !$entry['is_available']);
-    
+
             return [
                 'store_employee_id' => $storeEmployeeId,
+                'employee_name' => $storeEmployee->employee->firstname . ' ' . $storeEmployee->employee->lastname,
+                'store_id' => $storeEmployee->store_id,
                 'month' => $month,
                 'available_dates' => $availableDates,
                 'unavailable_dates' => array_map(fn($date, $info) => [
                     'date' => $date,
-                    'reason' => $info['reason']
-                ], array_keys($unavailableDates), $unavailableDates)
+                    'reason' => $info['reason'],
+                ], array_keys($unavailableDates), $unavailableDates),
             ];
         });
-    
-        return response()->json([
-            'success' => true,
-            'data' => $availability,
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'total' => $storeEmployeeIds->count(),
-        ]);
+
+        // Return the response using paginateResponse from HandlesHelperController
+        return $this->paginateResponse(new LengthAwarePaginator(
+            $availability,
+            $paginatedEmployeeIds->total(),
+            $paginatedEmployeeIds->perPage(),
+            $paginatedEmployeeIds->currentPage(),
+            ['path' => $request->url(), 'query' => $request->query()]
+        ));
     }
-    
+
+
     /**
      * Store a newly created availability record.
      */

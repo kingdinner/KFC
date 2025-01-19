@@ -22,8 +22,12 @@ class StoreSeeder extends Seeder
             Store::create([
                 'name' => $faker->company,
                 'cost_center' => 'CC-' . $faker->unique()->randomNumber(5, true),
+                'level' => $faker->randomElement(['Level 1', 'Level 2', 'Level 3']),
+                'costcenter_text' => $faker->sentence(3),
+                'Area' => $faker->randomElement(['North', 'South', 'East', 'West']),
                 'asset_type' => $faker->randomElement(['Retail', 'Warehouse', 'Office']),
                 'store_code' => (string) $storeCode, // Convert to string if needed
+                'operating_hours' => $faker->randomElement(['6-12', '12-18', '18-24']),
             ]);
         }
 

@@ -12,8 +12,8 @@ class HRFAQController extends Controller
 {
     public function landingPage()
     {
-        $hrRules = HRRule::all();
-        $faqs = FAQ::all();
+        $hrRules = HRRule::whereNull('deleted_at')->get();
+        $faqs = FAQ::whereNull('deleted_at')->get();
 
         return response()->json([
             'hr_rules' => $hrRules,
@@ -33,6 +33,73 @@ class HRFAQController extends Controller
         return $request->hasFile('file') 
             ? $this->handleHRRuleFileUpload($request) 
             : $this->handleManualHRRuleInsert($request);
+    }
+
+    public function softDeleteFAQ($id)
+    {
+        $faq = FAQ::find($id);
+
+        if (!$faq) {
+            return response()->json(['message' => 'FAQ not found'], 404);
+        }
+
+        $faq->delete();
+
+        return response()->json(['message' => 'FAQ soft-deleted successfully']);
+    }
+
+    public function softDeleteHRRule($id)
+    {
+        $hrRule = HRRule::find($id);
+
+        if (!$hrRule) {
+            return response()->json(['message' => 'HR Rule not found'], 404);
+        }
+
+        $hrRule->delete();
+
+        return response()->json(['message' => 'HR Rule soft-deleted successfully']);
+    }
+
+    public function updateFAQ(Request $request, $id)
+    {
+        $faq = FAQ::find($id);
+
+        if (!$faq) {
+            return response()->json(['message' => 'FAQ not found'], 404);
+        }
+
+        $validatedData = $request->validate([
+            'question' => 'required|string|max:255',
+            'answer' => 'required|string',
+        ]);
+
+        $faq->fill($validatedData)->save();
+
+        return response()->json([
+            'message' => 'FAQ updated successfully',
+            'faq' => $faq
+        ]);
+    }
+
+    public function updateHRRule(Request $request, $id)
+    {
+        $hrRule = HRRule::find($id);
+
+        if (!$hrRule) {
+            return response()->json(['message' => 'HR Rule not found'], 404);
+        }
+
+        $validatedData = $request->validate([
+            'rule' => 'required|string|max:255',
+        ]);
+
+        $hrRule->fill($validatedData)->save();
+
+        return response()->json([
+            'message' => 'HR Rule updated successfully',
+            'hr_rule' => $hrRule
+        ]);
     }
 
     private function handleFAQFileUpload(Request $request)
@@ -83,8 +150,7 @@ class HRFAQController extends Controller
 
         $savedHRRules = array_filter(array_map(function ($ruleData) {
             if (!empty($ruleData['rule'])) {
-                $hrRule = HRRule::firstOrNew();
-                $hrRule->rule = $ruleData['rule'];
+                $hrRule = HRRule::firstOrNew(['rule' => $ruleData['rule']]);
                 $hrRule->save();
                 return $hrRule;
             }
@@ -99,14 +165,20 @@ class HRFAQController extends Controller
 
     private function handleManualHRRuleInsert(Request $request)
     {
-        $validatedData = $request->validate(['rule' => 'required|string|max:255']);
-        
-        $hrRule = HRRule::firstOrNew();
-        $hrRule->fill($validatedData)->save();
+        $validatedData = $request->validate([
+            'rules' => 'required|array',
+            'rules.*.rule' => 'required|string|max:255',
+        ]);
+
+        $savedHRRules = array_map(function ($ruleData) {
+            $hrRule = HRRule::firstOrNew(['rule' => $ruleData['rule']]);
+            $hrRule->save();
+            return $hrRule;
+        }, $validatedData['rules']);
 
         return response()->json([
-            'message' => 'HR Rule saved successfully',
-            'hr_rule' => $hrRule
+            'message' => 'HR Rules saved successfully',
+            'hr_rules' => $savedHRRules
         ]);
     }
 
