@@ -25,8 +25,11 @@ class AuthController extends Controller
         ]);
     
         // Retrieve the user by employee ID
-        $user = AuthenticationAccount::where('employee_id', $validatedData['employee_id'])->first();
-    
+        $user = AuthenticationAccount::with([
+            'employee.stores:id,name,store_code',
+            'roles:name'
+        ])->where('employee_id', $validatedData['employee_id'])->first();
+
         // Check if the account is locked (i.e., is_active is false)
         if (!$user->is_active) {
             return response()->json(['message' => 'Account is locked. Please contact support.'], 403);
@@ -68,13 +71,35 @@ class AuthController extends Controller
                 }, ['view' => false, 'edit' => false]), // Aggregate permissions across roles
             ];
         });
+
+        $employee = $user->employee;
+        $employeeData = $employee ? [
+            'id' => $employee->id,
+            'firstname' => $employee->firstname,
+            'lastname' => $employee->lastname,
+            'email_address' => $employee->email_address,
+            'dob' => $employee->dob,
+            'nationality' => $employee->nationality,
+            'address' => $employee->address,
+            'city' => $employee->city,
+            'state' => $employee->state,
+            'zipcode' => $employee->zipcode,
+            'stores' => $employee->stores->map(function ($store) {
+                return [
+                    'id' => $store->id,
+                    'name' => $store->name,
+                    'store_code' => $store->store_code,
+                ];
+            }),
+        ] : null;
     
         // Return the response
         return response()->json([
             'token_type' => 'Bearer',
             'accessToken' => $loginResponse['accessToken'],
-            'roles' => $roles, // Include roles
-            'permissions' => $permissionsData, // Include permissions
+            'roles' => $roles, 
+            'permissions' => $permissionsData, 
+            'employee_details' => $employeeData,
         ]);
     }
     
