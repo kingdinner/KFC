@@ -2,52 +2,54 @@
 
 namespace App\Http\Controllers\API\DataManagement;
 
+use App\Traits\HandlesHelperController;
 use Illuminate\Http\Request;
 use App\Models\StarStatus;
 use App\Http\Controllers\Controller;
 
 class StarStatusController extends Controller
 {
-    /**
-     * Display a listing of star statuses.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    use HandlesHelperController;
+    public function index(Request $request)
     {
-        try {
-            // Retrieve all star statuses
-            $starStatuses = StarStatus::all();
+        $perPage = $request->input('per_page', 10);
+        $search = $request->input('search');
 
-            return response()->json([
-                'success' => true,
-                'data' => $starStatuses
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve star statuses'
-            ], 500);
+        $starStatusesQuery = StarStatus::query();
+
+        if ($search) {
+            $lowerSearchValue = strtolower($search);
+
+            $starStatusesQuery->whereRaw('LOWER(name) LIKE ?', ["%{$lowerSearchValue}%"])
+                ->orWhereRaw('LOWER(reason) LIKE ?', ["%{$lowerSearchValue}%"]);
         }
+
+        $starStatuses = $starStatusesQuery->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $starStatuses->items(),
+            'current_page' => $starStatuses->currentPage(),
+            'from' => $starStatuses->firstItem(),
+            'to' => $starStatuses->lastItem(),
+            'per_page' => $starStatuses->perPage(),
+            'total' => $starStatuses->total(),
+            'last_page' => $starStatuses->lastPage(),
+            'next_page_url' => $starStatuses->nextPageUrl(),
+            'prev_page_url' => $starStatuses->previousPageUrl(),
+            'links' => $starStatuses->linkCollection(),
+        ], 200);
     }
 
-    /**
-     * Add a new star status.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
-     */
+
     public function store(Request $request)
     {
         $request->validate([
-            'store_employee_id' => 'required|exists:store_employees,id',
             'name' => 'required|string|max:255',
-            'reason' => 'nullable|string',
-            'status' => 'required|in:ACTIVE,INACTIVE',
+            'reason' => 'nullable|string'
         ]);
 
         try {
-            // Create a new star status
             $starStatus = StarStatus::create($request->all());
 
             return response()->json([
@@ -62,24 +64,15 @@ class StarStatusController extends Controller
         }
     }
 
-    /**
-     * Update an existing star status.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param int $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
-            'store_employee_id' => 'required|exists:store_employees,id',
             'name' => 'required|string|max:255',
             'reason' => 'nullable|string',
             'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
         try {
-            // Find and update the star status
             $starStatus = StarStatus::findOrFail($id);
             $starStatus->update($request->all());
 
@@ -95,61 +88,20 @@ class StarStatusController extends Controller
         }
     }
 
-    /**
-     * Delete a star status.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id)
     {
         try {
-            // Find and delete the star status
             $starStatus = StarStatus::findOrFail($id);
             $starStatus->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Star status deleted successfully'
+                'message' => 'Star status soft deleted successfully'
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete star status'
-            ], 500);
-        }
-    }
-
-    /**
-     * Search for star statuses.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
-     */
-    public function search($status)
-    {
-        $status = trim($status);
-
-        if (empty($status)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Status name parameter is required'
-            ], 400);
-        }
-
-        try {
-            $results = StarStatus::where('name', 'like', "%$status%")
-                ->orWhere('reason', 'like', "%$status%")
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $results
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to search star statuses'
+                'message' => 'Failed to soft delete star status'
             ], 500);
         }
     }

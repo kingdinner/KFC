@@ -100,19 +100,18 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/', [StarStatusController::class, 'store']);
         Route::put('/{id}', [StarStatusController::class, 'update']);
         Route::delete('/{id}', [StarStatusController::class, 'destroy']);
-        Route::get('/search/{status}', [StarStatusController::class, 'search']);
     });
 
     Route::prefix('tmar-summary')->group(function () {
         Route::get('/', [TmarReportController::class, 'index']);
     });
 
-    Route::prefix('store-employees/{storeEmployeeId}/ratings')->group(function () {
-        Route::get('/', [RatingController::class, 'index']);
-        Route::get('{ratingId}', [RatingController::class, 'show']);
-        Route::post('/', [RatingController::class, 'store']);
-        Route::put('{ratingId}', [RatingController::class, 'update']);
+    Route::prefix('ratings')->group(function () {
+        Route::get('/', [RatingController::class, 'index']); 
+        Route::post('/', [RatingController::class, 'store']); 
+        Route::put('{ratingId}', [RatingController::class, 'update']); 
     });
+    
 
     // Labor Management
     Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);

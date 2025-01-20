@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('tmar_reports', function (Blueprint $table) {
@@ -19,32 +16,25 @@ return new class extends Migration
             $table->integer('store_number')->nullable();
             $table->string('sas_name')->nullable();
             $table->string('other_name')->nullable();
-
-            // Star Ratings
             $table->integer('star_0')->default(0);
             $table->integer('star_1')->default(0);
             $table->integer('star_2')->default(0);
             $table->integer('star_3')->default(0);
             $table->integer('star_4')->default(0);
             $table->integer('all_star')->default(0);
-
             $table->string('team_leader')->nullable();
             $table->string('sldc')->nullable();
             $table->string('sletp')->nullable();
-
-            // Additional Columns
             $table->integer('total_team_member')->nullable();
             $table->decimal('average_tenure', 5, 2)->nullable();
             $table->integer('retention_90_days')->nullable();
             $table->string('restaurant_basics')->nullable();
             $table->string('foh')->nullable();
             $table->timestamps();
+            $table->softDeletes(); // Add soft delete column
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tmar_reports');

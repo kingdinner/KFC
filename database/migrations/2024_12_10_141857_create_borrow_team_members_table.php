@@ -21,8 +21,8 @@ return new class extends Migration
             $table->time('transferred_time')->nullable();
             $table->string('status')->default('Pending');
             $table->text('reason')->nullable();
-
             $table->timestamps();
+            $table->softDeletes(); // Add soft delete column
 
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
             $table->foreign('borrowed_store_id')->references('id')->on('stores')->onDelete('cascade');

@@ -4,18 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\StoreEmployee;
 
 class StarStatus extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'star_statuses';
 
     protected $fillable = [
-        'store_employee_id', 
-        'name', 
-        'reason', 
+        'name',
+        'reason',
         'status'
     ];
 

@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Store;
 use App\Models\StoreEmployee;
+
+use App\Models\Availability;
+
+use App\Models\Leave;
 use Carbon\Carbon;
 
 class LaborManagementController extends Controller
