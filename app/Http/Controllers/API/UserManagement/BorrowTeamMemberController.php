@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Traits\HandlesApprovals;
 use App\Traits\HandlesHelperController;
 
+use Illuminate\Pagination\LengthAwarePaginator;
 class BorrowTeamMemberController extends Controller
 {
     use HandlesApprovals, HandlesHelperController;
@@ -34,8 +35,8 @@ class BorrowTeamMemberController extends Controller
 
     public function index(Request $request, $borrowType)
     {
-        $perPage = $request->input('per_page', 10);
-        $search = $request->input('search');
+        $search = $request->query('search', '');
+        $perPage = (int) $request->query('per_page', 10);
 
         $borrowedMembersQuery = BorrowTeamMember::with([
             'employee:id,firstname,lastname',
@@ -43,10 +44,11 @@ class BorrowTeamMemberController extends Controller
             'transferredStore:id,name',
         ])->where('borrow_type', $borrowType);
 
-        if ($search) {
+        // Apply search filters
+        if (!empty($search)) {
             $borrowedMembersQuery->whereHas('employee', function ($query) use ($search) {
                 $query->where('firstname', 'like', '%' . $search . '%')
-                      ->orWhere('lastname', 'like', '%' . $search . '%');
+                    ->orWhere('lastname', 'like', '%' . $search . '%');
             })
             ->orWhereHas('borrowedStore', function ($query) use ($search) {
                 $query->where('name', 'like', '%' . $search . '%');
@@ -56,10 +58,53 @@ class BorrowTeamMemberController extends Controller
             });
         }
 
-        $borrowedMembers = $borrowedMembersQuery->paginate($perPage);
+        $borrowedMembers = $borrowedMembersQuery->get();
 
-        return $this->paginateResponse($borrowedMembers);
+        // Transform data
+        $borrowedMembersData = $borrowedMembers->map(function ($borrowedMember) {
+            return [
+                'id' => $borrowedMember->id,
+                'employee' => [
+                    'id' => $borrowedMember->employee->id,
+                    'firstname' => $borrowedMember->employee->firstname,
+                    'lastname' => $borrowedMember->employee->lastname,
+                ],
+                'borrowed_store' => $borrowedMember->borrowedStore ? $borrowedMember->borrowedStore->name : null,
+                'transferred_store' => $borrowedMember->transferredStore ? $borrowedMember->transferredStore->name : null,
+                'borrow_type' => $borrowedMember->borrow_type,
+                'created_at' => $borrowedMember->created_at ? $borrowedMember->created_at->toDateTimeString() : null,
+                'updated_at' => $borrowedMember->updated_at ? $borrowedMember->updated_at->toDateTimeString() : null,
+            ];
+        });
+
+        // Pagination
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $total = $borrowedMembersData->count();
+        $paginatedData = $borrowedMembersData->slice(($currentPage - 1) * $perPage, $perPage);
+        $formattedPaginator = new LengthAwarePaginator(
+            $paginatedData,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedPaginator->items(),
+            'pagination' => [
+                'current_page' => $formattedPaginator->currentPage(),
+                'from' => $formattedPaginator->firstItem(),
+                'to' => $formattedPaginator->lastItem(),
+                'per_page' => $formattedPaginator->perPage(),
+                'total' => $formattedPaginator->total(),
+                'last_page' => $formattedPaginator->lastPage(),
+                'next_page_url' => $formattedPaginator->nextPageUrl(),
+                'prev_page_url' => $formattedPaginator->previousPageUrl(),
+            ]
+        ]);
     }
+
 
     public function createBorrowRequest(Request $request)
     {

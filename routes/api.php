@@ -82,6 +82,7 @@ Route::middleware('auth:api')->group(function () {
     Route::middleware(['check.permission:Delete User,delete'])->post('/account/{id}/restore', [UserController::class, 'restore']);
 
     // Permissions
+    Route::get('/permissions/module-list', [PermissionController::class, 'moduleList']);
     Route::apiResource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
 
     // Stores
@@ -103,7 +104,10 @@ Route::middleware('auth:api')->group(function () {
     });
 
     Route::prefix('tmar-summary')->group(function () {
+        Route::post('/', [TmarReportController::class, 'store']);
         Route::get('/', [TmarReportController::class, 'index']);
+        Route::get('/view-achievement', [TmarReportController::class, 'viewAchievement']);
+        Route::put('/update-achievement/{id}', [TmarReportController::class, 'updateAchievement']);
     });
 
     Route::prefix('ratings')->group(function () {
@@ -114,7 +118,6 @@ Route::middleware('auth:api')->group(function () {
     
 
     // Labor Management
-    Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);
     Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);
 });
 

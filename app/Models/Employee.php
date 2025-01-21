@@ -21,6 +21,7 @@ class Employee extends Model
         'city',                        // City name
         'state',                       // State or province
         'zipcode',                     // Postal code
+        'station'
     ];
 
     /**

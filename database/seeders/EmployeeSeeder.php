@@ -16,6 +16,9 @@ class EmployeeSeeder extends Seeder
     {         
         $faker = Faker::create();         
         
+        // Define possible stations
+        $stations = ['kitchen_station', 'counter_station', 'dining_station'];
+
         // Get all authentication accounts         
         $authenticationAccounts = AuthenticationAccount::all();          
         
@@ -31,7 +34,8 @@ class EmployeeSeeder extends Seeder
                 'address' => $faker->streetAddress,                 
                 'city' => $faker->city,                 
                 'state' => $faker->state,                 
-                'zipcode' => $faker->postcode,             
+                'zipcode' => $faker->postcode,                 
+                'station' => $faker->randomElement($stations), // Assign a random station
             ]);         
         }     
     } 

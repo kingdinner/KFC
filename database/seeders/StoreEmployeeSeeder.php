@@ -18,7 +18,7 @@ class StoreEmployeeSeeder extends Seeder
         $faker = Faker::create();
 
         // Get all stores and employees
-        $stores = Store::whereIn('id', [1, 2])->get(); // Filter stores with IDs 1 and 2
+        $stores = Store::whereIn('id', [1])->get(); // Filter stores with IDs 1 and 2
         $employees = Employee::all();
 
         // Ensure there are stores and employees before seeding

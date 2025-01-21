@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('city')->nullable();
             $table->string('state')->nullable();
             $table->string('zipcode')->nullable();
+            $table->string('station')->nullable();
             $table->softDeletes();
             $table->timestamps();
 

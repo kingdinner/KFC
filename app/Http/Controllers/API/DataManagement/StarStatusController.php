@@ -7,40 +7,65 @@ use Illuminate\Http\Request;
 use App\Models\StarStatus;
 use App\Http\Controllers\Controller;
 
+use Illuminate\Pagination\LengthAwarePaginator;
 class StarStatusController extends Controller
 {
     use HandlesHelperController;
     public function index(Request $request)
     {
-        $perPage = $request->input('per_page', 10);
-        $search = $request->input('search');
+        $search = $request->query('search', '');
+        $perPage = (int) $request->query('per_page', 10);
 
         $starStatusesQuery = StarStatus::query();
 
-        if ($search) {
-            $lowerSearchValue = strtolower($search);
+        if (!empty($search)) {
+            $starStatusesQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%$search%")
+                    ->orWhere('reason', 'like', "%$search%");
 
-            $starStatusesQuery->whereRaw('LOWER(name) LIKE ?', ["%{$lowerSearchValue}%"])
-                ->orWhereRaw('LOWER(reason) LIKE ?', ["%{$lowerSearchValue}%"]);
+                if (is_numeric($search)) {
+                    $query->orWhere('id', $search);
+                }
+            });
         }
 
         $starStatuses = $starStatusesQuery->paginate($perPage);
 
+        $starStatusesData = $starStatuses->getCollection()->map(function ($starStatus) {
+            return [
+                'id' => $starStatus->id,
+                'name' => $starStatus->name,
+                'reason' => $starStatus->reason,
+                'status' => $starStatus->status,
+                'created_at' => $starStatus->created_at ? $starStatus->created_at->toDateTimeString() : null,
+                'updated_at' => $starStatus->updated_at ? $starStatus->updated_at->toDateTimeString() : null,
+                'deleted_at' => $starStatus->deleted_at,
+            ];
+        });
+
+        $formattedPaginator = new LengthAwarePaginator(
+            $starStatusesData,
+            $starStatuses->total(),
+            $starStatuses->perPage(),
+            $starStatuses->currentPage(),
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
         return response()->json([
             'success' => true,
-            'data' => $starStatuses->items(),
-            'current_page' => $starStatuses->currentPage(),
-            'from' => $starStatuses->firstItem(),
-            'to' => $starStatuses->lastItem(),
-            'per_page' => $starStatuses->perPage(),
-            'total' => $starStatuses->total(),
-            'last_page' => $starStatuses->lastPage(),
-            'next_page_url' => $starStatuses->nextPageUrl(),
-            'prev_page_url' => $starStatuses->previousPageUrl(),
-            'links' => $starStatuses->linkCollection(),
-        ], 200);
+            'data' => $formattedPaginator->items(),
+            'pagination' => [
+                'current_page' => $formattedPaginator->currentPage(),
+                'from' => $formattedPaginator->firstItem(),
+                'to' => $formattedPaginator->lastItem(),
+                'per_page' => $formattedPaginator->perPage(),
+                'total' => $formattedPaginator->total(),
+                'last_page' => $formattedPaginator->lastPage(),
+                'next_page_url' => $formattedPaginator->nextPageUrl(),
+                'prev_page_url' => $formattedPaginator->previousPageUrl(),
+            ]
+        ]);
     }
-
 
     public function store(Request $request)
     {
