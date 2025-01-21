@@ -69,6 +69,34 @@ class PermissionController extends Controller
         return $this->paginateResponse($paginator);
     }
 
+    
+    public function getUniquePermissions(Request $request)
+    {
+        try {
+            $permissions = Permission::all();
+
+            $uniquePermissions = $permissions->map(function ($permission) {
+                return [
+                    'name' => $permission->name,
+                    'Permission' => [
+                        'view' => $permission->view ?? false,
+                        'edit' => $permission->edit ?? false,
+                    ],
+                ];
+            })->unique('name')->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $uniquePermissions,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch unique permissions.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     
     public function store(Request $request): JsonResponse

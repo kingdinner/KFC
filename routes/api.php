@@ -83,6 +83,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Permissions
     Route::get('/permissions/module-list', [PermissionController::class, 'moduleList']);
+    Route::get('/permissions/moduleName', [PermissionController::class, 'getUniquePermissions']);
     Route::apiResource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
 
     // Stores

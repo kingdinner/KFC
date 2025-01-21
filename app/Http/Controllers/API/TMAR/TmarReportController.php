@@ -7,6 +7,9 @@ use App\Traits\HandlesHelperController;
 use Illuminate\Http\Request;
 use App\Models\TmarReport as TmarSummary;
 use App\Models\TMARAchievement;
+use App\Models\Store;
+use App\Models\StoreEmployee;
+use App\Models\Employee;
 
 use Illuminate\Pagination\LengthAwarePaginator;
 class TmarReportController extends Controller
@@ -125,11 +128,11 @@ class TmarReportController extends Controller
     {
         $search = $request->query('search', ''); // Search query
         $perPage = (int) $request->query('per_page', 10); // Items per page
-
+    
         try {
             // Query achievements with optional search filter
             $achievementsQuery = TMARAchievement::with('stationLevels');
-
+    
             if (!empty($search)) {
                 $achievementsQuery->where(function ($query) use ($search) {
                     $query->where('employee', 'like', "%$search%")
@@ -137,11 +140,28 @@ class TmarReportController extends Controller
                         ->orWhere('remarks', 'like', "%$search%")
                         ->orWhere('all_star', $search);
                 });
+    
+                // Check if the search term is a store code
+                $store = Store::where('store_code', $search)->first();
+                if ($store) {
+                    // Get all employees matching the store ID
+                    $employeeIds = StoreEmployee::where('store_id', $store->id)
+                        ->pluck('employee_id');
+    
+                    // Get full names of employees in the store
+                    $employeeFullNames = Employee::whereIn('id', $employeeIds)
+                        ->get()
+                        ->map(fn($e) => "{$e->firstname} {$e->lastname}")
+                        ->toArray();
+    
+                    // Include achievements for employees with full names in the store
+                    $achievementsQuery->orWhereIn('employee', $employeeFullNames);
+                }
             }
-
+    
             // Paginate results
             $achievements = $achievementsQuery->paginate($perPage);
-
+    
             // Transform data for response
             $achievementData = $achievements->getCollection()->map(function ($achievement) {
                 return [
@@ -175,7 +195,7 @@ class TmarReportController extends Controller
                     }),
                 ];
             });
-
+    
             // Create a new paginator for transformed data
             $formattedPaginator = new LengthAwarePaginator(
                 $achievementData,
@@ -184,7 +204,7 @@ class TmarReportController extends Controller
                 $achievements->currentPage(),
                 ['path' => $request->url(), 'query' => $request->query()]
             );
-
+    
             // Return response
             return response()->json([
                 'success' => true,
@@ -208,7 +228,6 @@ class TmarReportController extends Controller
             ], 500);
         }
     }
-
 
     public function updateAchievement(Request $request, $id)
     {

@@ -38,5 +38,4 @@ class TMARAchievement extends Model
     {
         return $this->hasMany(TMARStationLevel::class, 'tmar_achievement_id');
     }
-    
 }
