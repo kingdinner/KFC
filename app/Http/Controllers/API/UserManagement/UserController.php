@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Employee;
 use App\Services\SoftDeleteTrait;
+use App\Models\TMARAchievement;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Mail\ResetPasswordMail;
@@ -81,53 +82,53 @@ class UserController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:authentication_accounts,email',
+            'employee_id' => 'required|exists:authentication_accounts,employee_id',
             'secret_answer' => 'required|string',
             'new_password' => 'required|string|min:6',
         ]);
-
-        $user = AuthenticationAccount::where('email', $request->email)->first();
-
+    
+        $user = AuthenticationAccount::where('employee_id', $request->employee_id)->first();
+    
         if (!Hash::check($request->secret_answer, $user->secret_answer)) {
             return response()->json(['message' => 'The provided secret answer is incorrect.'], 403);
         }
-
+    
         $user->password = Hash::make($request->new_password);
         $user->save();
-
+    
         return response()->json(['message' => 'Password has been successfully changed.']);
     }
 
-    public function forgotPassword(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email|exists:authentication_accounts,email',
-        ]);
-
-        $user = AuthenticationAccount::where('email', $request->email)->first();
-
-        $newPassword = Str::random(8);
-        $user->password = Hash::make($newPassword);
-        $user->save();
-
-        Mail::to($user->email)->send(new ResetPasswordMail($newPassword));
-
-        return response()->json(['message' => 'A new password has been sent to your email address.']);
-    }
-
+    // public function forgotPassword(Request $request)
+    // {
+    //     $request->validate([
+    //         'email' => 'required|email|exists:authentication_accounts,email',
+    //     ]);
+    
+    //     $user = AuthenticationAccount::where('email', $request->email)->first();
+    
+    //     $newPassword = Str::random(8);
+    //     $user->password = Hash::make($newPassword);
+    //     $user->save();
+    
+    //     Mail::to($user->email)->send(new ResetPasswordMail($newPassword));
+    
+    //     return response()->json(['message' => 'A new password has been sent to your email address.']);
+    // }
+    
     public function show(Request $request)
     {
         $filterValue = trim($request->input('search', ''));
         $paginationSize = $request->input('perPage', 10);
-
+    
         $query = AuthenticationAccount::with([
             'employee.stores:id,name,store_code',
             'roles:name'
         ]);
-
+    
         if (!empty($filterValue)) {
-            $lowerFilterValue = strtolower($filterValue); // Convert filter value to lowercase for comparison
-
+            $lowerFilterValue = strtolower($filterValue);
+    
             $query->whereRaw('LOWER(email) LIKE ?', ["%{$lowerFilterValue}%"])
                 ->orWhereHas('employee', function ($q) use ($lowerFilterValue) {
                     $q->whereRaw('LOWER(firstname) LIKE ?', ["%{$lowerFilterValue}%"])
@@ -135,16 +136,47 @@ class UserController extends Controller
                     ->orWhereRaw('LOWER(email_address) LIKE ?', ["%{$lowerFilterValue}%"]);
                 });
         }
-
+    
         $userAccounts = $query->paginate($paginationSize);
-
+    
         if ($userAccounts->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => 'No accounts found for the given search term.',
             ], 404);
         }
-
+    
+        $userAccounts->getCollection()->transform(function ($user) {
+            $employee = $user->employee;
+            $employeeData = $employee ? [
+                'id' => $employee->id,
+                'firstname' => $employee->firstname,
+                'lastname' => $employee->lastname,
+                'email_address' => $employee->email_address,
+                'dob' => $employee->dob,
+                'nationality' => $employee->nationality,
+                'address' => $employee->address,
+                'city' => $employee->city,
+                'state' => $employee->state,
+                'zipcode' => $employee->zipcode,
+                'stores' => $employee->stores->map(function ($store) {
+                    return [
+                        'id' => $store->id,
+                        'name' => $store->name,
+                        'store_code' => $store->store_code,
+                    ];
+                }),
+            ] : null;
+    
+            $tmar = TMARAchievement::where('employee_id', $employee->id)->get();
+    
+            return [
+                'user' => $user,
+                'employee_details' => $employeeData,
+                'tmar' => $tmar,
+            ];
+        });
+    
         return $this->paginateResponse($userAccounts);
     }
 

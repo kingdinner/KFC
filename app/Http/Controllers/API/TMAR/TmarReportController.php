@@ -63,7 +63,7 @@ class TmarReportController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'employee' => 'required|string|max:255',
+            'employee_id' => 'required|numeric',
             'service_provider' => 'required|string|max:255',
             'tenure_months' => 'required|numeric',
             'ninety_day_retention' => 'required|boolean',
@@ -84,7 +84,7 @@ class TmarReportController extends Controller
             'dining_station.date' => 'nullable|date',
         ]);
         $tmarAchievement = TMARAchievement::create([
-            'employee' => $validatedData['employee'],
+            'employee_id' => $validatedData['employee_id'],
             'service_provider' => $validatedData['service_provider'],
             'tenure_months' => $validatedData['tenure_months'],
             'ninety_day_retention' => $validatedData['ninety_day_retention'],
@@ -126,47 +126,44 @@ class TmarReportController extends Controller
 
     public function viewAchievement(Request $request)
     {
-        $search = $request->query('search', ''); // Search query
-        $perPage = (int) $request->query('per_page', 10); // Items per page
-    
+        $search = $request->query('search', '');
+        $perPage = (int) $request->query('per_page', 10);
+
         try {
-            // Query achievements with optional search filter
-            $achievementsQuery = TMARAchievement::with('stationLevels');
-    
+            $achievementsQuery = TMARAchievement::with(['stationLevels', 'employee:id,firstname,lastname']);
+
             if (!empty($search)) {
                 $achievementsQuery->where(function ($query) use ($search) {
-                    $query->where('employee', 'like', "%$search%")
-                        ->orWhere('service_provider', 'like', "%$search%")
+                    $query->where('service_provider', 'like', "%$search%")
                         ->orWhere('remarks', 'like', "%$search%")
                         ->orWhere('all_star', $search);
                 });
-    
-                // Check if the search term is a store code
+
+                // Check if search matches a store
                 $store = Store::where('store_code', $search)->first();
                 if ($store) {
-                    // Get all employees matching the store ID
-                    $employeeIds = StoreEmployee::where('store_id', $store->id)
-                        ->pluck('employee_id');
-    
-                    // Get full names of employees in the store
-                    $employeeFullNames = Employee::whereIn('id', $employeeIds)
-                        ->get()
-                        ->map(fn($e) => "{$e->firstname} {$e->lastname}")
-                        ->toArray();
-    
-                    // Include achievements for employees with full names in the store
-                    $achievementsQuery->orWhereIn('employee', $employeeFullNames);
+                    // Fetch employees from the store
+                    $employees = StoreEmployee::where('store_id', $store->id)
+                        ->with('employee:id,firstname,lastname')
+                        ->get();
+
+                    $employeeIds = $employees->pluck('employee_id');
+
+                    // Add employee IDs to the query
+                    $achievementsQuery->orWhereIn('employee_id', $employeeIds);
                 }
             }
-    
+
             // Paginate results
             $achievements = $achievementsQuery->paginate($perPage);
-    
+
             // Transform data for response
             $achievementData = $achievements->getCollection()->map(function ($achievement) {
+                $employee = $achievement->employee;
+
                 return [
                     'id' => $achievement->id,
-                    'employee' => $achievement->employee,
+                    'Name' => $employee ? $employee->firstname . ' ' . $employee->lastname : 'Unknown Employee',
                     'service_provider' => $achievement->service_provider,
                     'tenure_months' => $achievement->tenure_months,
                     'ninety_day_retention' => $achievement->ninety_day_retention,
@@ -195,8 +192,7 @@ class TmarReportController extends Controller
                     }),
                 ];
             });
-    
-            // Create a new paginator for transformed data
+
             $formattedPaginator = new LengthAwarePaginator(
                 $achievementData,
                 $achievements->total(),
@@ -204,8 +200,7 @@ class TmarReportController extends Controller
                 $achievements->currentPage(),
                 ['path' => $request->url(), 'query' => $request->query()]
             );
-    
-            // Return response
+
             return response()->json([
                 'success' => true,
                 'data' => $formattedPaginator->items(),
@@ -229,10 +224,10 @@ class TmarReportController extends Controller
         }
     }
 
+
     public function updateAchievement(Request $request, $id)
     {
         $validatedData = $request->validate([
-            'employee' => 'nullable|string|max:255',
             'service_provider' => 'nullable|string|max:255',
             'tenure_months' => 'nullable|numeric',
             'ninety_day_retention' => 'nullable|boolean',
@@ -269,7 +264,6 @@ class TmarReportController extends Controller
 
             // Update main achievement data
             $achievement->update([
-                'employee' => $validatedData['employee'] ?? $achievement->employee,
                 'service_provider' => $validatedData['service_provider'] ?? $achievement->service_provider,
                 'tenure_months' => $validatedData['tenure_months'] ?? $achievement->tenure_months,
                 'ninety_day_retention' => $validatedData['ninety_day_retention'] ?? $achievement->ninety_day_retention,

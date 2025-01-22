@@ -26,9 +26,11 @@ trait HandlesAvailability
 
         // Query availability for the specified month
         $availability = Availability::with('storeEmployee')
-            ->where('store_employee_id', $storeEmployeeId)
-            ->whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->get();
+        ->where('store_employee_id', $storeEmployeeId)
+        ->where('status', 'Approved') // Only fetch approved availability records
+        ->whereBetween('date', [$startOfMonth, $endOfMonth])
+        ->get();
+    
 
         // Fetch leaves for the employee during the specified month
         $leaves = Leave::where('employee_id', function ($query) use ($storeEmployeeId) {
@@ -62,6 +64,7 @@ trait HandlesAvailability
                         'date' => $period->toDateString(),
                         'is_available' => false,
                         'reason' => 'On Leave',
+                        'status' => $leave->status,
                         'created_at' => null,
                         'updated_at' => null,
                         'store_employee' => StoreEmployee::find($storeEmployeeId),

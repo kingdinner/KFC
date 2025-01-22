@@ -18,6 +18,12 @@ class Availability extends Model
         'date',
         'is_available',
         'reason',
+        'additional_shift', // Indicates if the shift is additional
+        'swap_shift_from',  // Date of the shift being swapped from
+        'swap_shift_to',    // Preferred date for the swapped shift
+        'swap_reason',      // Reason for the swap
+        'status',
+        'approval_reason', // Reason for approval/rejection
     ];
 
     /**

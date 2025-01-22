@@ -41,4 +41,9 @@ class StoreEmployee extends Model
     {
         return $this->hasMany(Rating::class);
     }
+
+    public function availability()
+    {
+        return $this->hasMany(Availability::class, 'store_employee_id');
+    }
 }

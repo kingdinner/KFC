@@ -66,4 +66,10 @@ class Employee extends Model
     public function payRates(){
         return $this->hasMany(PayRate::class);
     }
+
+    public function tmarAchievements()
+    {
+        return $this->hasMany(TMARAchievement::class, 'employee_id', 'id');
+    }
+    
 }

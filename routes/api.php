@@ -30,6 +30,8 @@ Route::post('login', [AuthController::class, 'login']);
 
 Route::get('landing-page', [HRFAQController::class, 'landingPage']);
 
+Route::post('/users/forgot-password', [UserController::class, 'resetPassword']);
+
 Route::middleware('auth:api')->group(function () {
 
     Route::post('tokenKeepAlive', [AuthController::class, 'tokenKeepAlive']);
@@ -46,7 +48,6 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('/users', UserController::class)->only(['store']);
     Route::put('/users/toggle-lock/{userid}', [UserController::class, 'toggleUserLock']);
     Route::post('/users/change-password', [UserController::class, 'resetPassword']);
-    Route::post('/users/forgot-password', [UserController::class, 'forgotPassword']);
     Route::put('/users/update/{id}', [UserController::class, 'update']);
     Route::get('/users', [UserController::class, 'show']);
     Route::put('/users/{id}/role', [UserController::class, 'assignOrEditRoles']);
@@ -68,7 +69,12 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/leaves/request', [LeaveController::class, 'createLeaveRequest']);
 
     // Availability
+    Route::get('availability/shifts', [AvailabilityController::class, 'showAllShifts']);
     Route::apiResource('availability', AvailabilityController::class);
+    Route::post('availability/additional-shift', [AvailabilityController::class, 'createAdditionalShift']);
+    Route::post('availability/swap-shift', [AvailabilityController::class, 'swapShift']);
+    Route::post('availability/{id}/approve-or-reject', [AvailabilityController::class, 'approveOrRejectShift']);
+
 
     // Borrow and Swap
     Route::controller(BorrowTeamMemberController::class)->group(function () {
@@ -109,6 +115,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/', [TmarReportController::class, 'index']);
         Route::get('/view-achievement', [TmarReportController::class, 'viewAchievement']);
         Route::put('/update-achievement/{id}', [TmarReportController::class, 'updateAchievement']);
+        Route::get('/view-achievement-by-id', [TmarReportController::class, 'viewTmarByEmployeeId']);
     });
 
     Route::prefix('ratings')->group(function () {
@@ -119,7 +126,10 @@ Route::middleware('auth:api')->group(function () {
     
 
     // Labor Management
+    Route::post('/labor-schedule/save', [LaborManagementController::class, 'saveLaborSchedule']);
     Route::post('/labor-schedule/generate', [LaborManagementController::class, 'generateLaborSchedule']);
+    Route::get('/labor-schedule/filename/{filename}', [LaborManagementController::class, 'displayLaborScheduleByFilename']);
+    Route::get('/labor-schedule/getLatestSchedules', [LaborManagementController::class, 'getLatestSchedules']);
 });
 
 // remove this in production

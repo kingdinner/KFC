@@ -10,11 +10,12 @@ use Illuminate\Http\Request;
 use App\Traits\HandlesAvailability;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Traits\HandlesApprovals;
 
 
 class AvailabilityController extends Controller
 {
-    use HandlesAvailability, HandlesHelperController;
+    use HandlesAvailability, HandlesHelperController, HandlesApprovals;
     public function index(Request $request)
     {
         $perPage = $request->input('per_page', 10);
@@ -58,6 +59,12 @@ class AvailabilityController extends Controller
 
             if (!empty($data) && is_iterable($data)) {
                 foreach ($data as $item) {
+                    // Exclude items with a status of "Rejected"
+                    if (isset($item['status']) && $item['status'] === 'Rejected') {
+                        continue;
+                    }
+            
+                    // Process items with valid status
                     if (isset($item['date']) && array_key_exists($item['date'], $allDates)) {
                         $allDates[$item['date']] = [
                             'is_available' => false,
@@ -66,6 +73,7 @@ class AvailabilityController extends Controller
                     }
                 }
             }
+            
 
             $availableDates = array_keys(array_filter($allDates, fn($entry) => $entry['is_available']));
             $unavailableDates = array_filter($allDates, fn($entry) => !$entry['is_available']);
@@ -198,4 +206,89 @@ class AvailabilityController extends Controller
             'data' => $availability,
         ]);
     }
+
+    public function createAdditionalShift(Request $request)
+    {
+        $validated = $request->validate([
+            'store_employee_id' => 'required|exists:store_employees,id',
+            'date' => 'required|date',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $validated['additional_shift'] = true;
+        $validated['status'] = 'Pending'; // Default status for approval workflow
+
+        $availability = Availability::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Additional shift request created successfully. It is now pending approval.',
+            'data' => $availability,
+        ], 201);
+    }
+
+    public function swapShift(Request $request)
+    {
+        $validated = $request->validate([
+            'store_employee_id' => 'required|exists:store_employees,id',
+            'swap_shift_from' => 'required|date',
+            'swap_shift_to' => 'required|date|after_or_equal:swap_shift_from',
+            'swap_reason' => 'nullable|string|max:255',
+        ]);
+
+        $availability = Availability::create([
+            'store_employee_id' => $validated['store_employee_id'],
+            'date' => $validated['swap_shift_from'], // Log the original date
+            'is_available' => false,                // Mark as unavailable on original date
+            'swap_shift_from' => $validated['swap_shift_from'],
+            'swap_shift_to' => $validated['swap_shift_to'],
+            'swap_reason' => $validated['swap_reason'],
+            'status' => 'Pending',                  // Default status for approval workflow
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Shift swap request created successfully. It is now pending approval.',
+            'data' => $availability,
+        ], 201);
+    }
+
+
+    public function approveOrRejectShift(Request $request, $id)
+    {
+        $availability = Availability::findOrFail($id);
+
+        return $this->handleApproval($request, $availability, 'Shift');
+    }
+
+    public function showAllShifts(Request $request)
+    {
+        // Fetch all availability records
+        $shifts = Availability::with('storeEmployee.employee')
+            ->get()
+            ->map(function ($shift) {
+                return [
+                    'id' => $shift->id,
+                    'store_employee_id' => $shift->store_employee_id,
+                    'employee_name' => $shift->storeEmployee->employee->firstname . ' ' . $shift->storeEmployee->employee->lastname,
+                    'date' => $shift->date,
+                    'is_available' => $shift->is_available,
+                    'reason' => $shift->reason,
+                    'additional_shift' => $shift->additional_shift,
+                    'swap_shift_from' => $shift->swap_shift_from,
+                    'swap_shift_to' => $shift->swap_shift_to,
+                    'swap_reason' => $shift->swap_reason,
+                    'status' => $shift->status,
+                    'approval_reason' => $shift->approval_reason,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Shifts retrieved successfully.',
+            'data' => $shifts,
+        ]);
+    }
+
+
 }

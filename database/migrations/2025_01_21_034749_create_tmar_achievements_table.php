@@ -15,7 +15,7 @@ class CreateTMARAchievementsTable extends Migration
     {
         Schema::create('tmar_achievements', function (Blueprint $table) {
             $table->id();
-            $table->string('employee'); // Employee name
+            $table->string('employee_id'); // Employee name
             $table->string('service_provider'); // Service provider
             $table->integer('tenure_months'); // Tenure in months
             $table->boolean('ninety_day_retention')->default(false); // 90-day retention

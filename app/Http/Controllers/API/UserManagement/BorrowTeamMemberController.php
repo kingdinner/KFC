@@ -9,6 +9,8 @@ use App\Traits\HandlesApprovals;
 use App\Traits\HandlesHelperController;
 
 use Illuminate\Pagination\LengthAwarePaginator;
+use Carbon\Carbon;
+use DateTimeZone;
 class BorrowTeamMemberController extends Controller
 {
     use HandlesApprovals, HandlesHelperController;
@@ -62,6 +64,10 @@ class BorrowTeamMemberController extends Controller
 
         // Transform data
         $borrowedMembersData = $borrowedMembers->map(function ($borrowedMember) {
+            $type = 'borrow_requested_date';
+            if($borrowedMember->borrow_type == 'swap') {
+                $type='swap_requested_date';
+            }
             return [
                 'id' => $borrowedMember->id,
                 'employee' => [
@@ -70,10 +76,17 @@ class BorrowTeamMemberController extends Controller
                     'lastname' => $borrowedMember->employee->lastname,
                 ],
                 'borrowed_store' => $borrowedMember->borrowedStore ? $borrowedMember->borrowedStore->name : null,
+                $type => $borrowedMember->created_at ? $borrowedMember->created_at->setTimezone(new DateTimeZone('Asia/Manila')) : null,
                 'transferred_store' => $borrowedMember->transferredStore ? $borrowedMember->transferredStore->name : null,
+                'transferred_date' => $borrowedMember->borrowed_date && $borrowedMember->borrowed_time
+                    ? Carbon::parse($borrowedMember->borrowed_date)
+                        ->format('Y-m-d') . ' ' .
+                    Carbon::parse($borrowedMember->borrowed_time)
+                        ->setTimezone(new DateTimeZone('Asia/Manila'))
+                        ->format('H:i:s')
+                    : null,
                 'borrow_type' => $borrowedMember->borrow_type,
-                'created_at' => $borrowedMember->created_at ? $borrowedMember->created_at->toDateTimeString() : null,
-                'updated_at' => $borrowedMember->updated_at ? $borrowedMember->updated_at->toDateTimeString() : null,
+                'status' => $borrowedMember->status,
             ];
         });
 

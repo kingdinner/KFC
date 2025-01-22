@@ -12,7 +12,7 @@ class TMARAchievement extends Model
     use HasFactory;
 
     protected $fillable = [
-        'employee',
+        'employee_id',
         'service_provider',
         'tenure_months',
         'ninety_day_retention',
@@ -38,4 +38,10 @@ class TMARAchievement extends Model
     {
         return $this->hasMany(TMARStationLevel::class, 'tmar_achievement_id');
     }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }   
+
 }

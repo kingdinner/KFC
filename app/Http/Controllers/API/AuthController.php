@@ -7,6 +7,9 @@ use App\Services\AuthService;
 use App\Http\Controllers\Controller;
 use App\Models\AuthenticationAccount;
 use App\Models\Permission;
+use App\Models\TMARAchievement;
+use App\Models\LaborSchedule;
+use Carbon\Carbon;
 class AuthController extends Controller
 {
     protected $authService;
@@ -16,43 +19,36 @@ class AuthController extends Controller
         $this->authService = $authService;
     }
 
-    public function login(Request $request)
+    public function login(Request $request) 
     {
-        // Validate the input data
         $validatedData = $request->validate([
             'employee_id' => 'required|string|exists:authentication_accounts,employee_id',
             'password' => 'required|string|min:6',
         ]);
-    
-        // Retrieve the user by employee ID
+
         $user = AuthenticationAccount::with([
             'employee.stores:id,name,store_code',
             'roles:name'
         ])->where('employee_id', $validatedData['employee_id'])->first();
 
-        // Check if the account is locked (i.e., is_active is false)
         if (!$user->is_active) {
             return response()->json(['message' => 'Account is locked. Please contact support.'], 403);
         }
-    
-        // Attempt to login using authService
+
         $loginResponse = $this->authService->attemptLogin($validatedData['employee_id'], $validatedData['password']);
         if (!$loginResponse['success']) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
-    
-        // Determine roles of the user
+
         $roles = $user->roles()->pluck('name');
-    
-        // Fetch permissions associated with the user's roles
+
         $roleIds = $user->roles()->pluck('id');
         $permissions = Permission::whereHas('permissionRoleDetails', function ($query) use ($roleIds) {
             $query->whereIn('role_id', $roleIds);
         })->with(['permissionRoleDetails' => function ($query) use ($roleIds) {
             $query->whereIn('role_id', $roleIds);
         }])->get();
-    
-        // Format permissions
+
         $permissionsData = $permissions->map(function ($permission) {
             $details = $permission->permissionRoleDetails->map(function ($detail) {
                 return [
@@ -60,7 +56,7 @@ class AuthController extends Controller
                     'edit' => in_array('edit', $detail->permission_array),
                 ];
             });
-    
+
             return [
                 'name' => $permission->name,
                 'Permission' => $details->reduce(function ($carry, $item) {
@@ -68,7 +64,7 @@ class AuthController extends Controller
                         'view' => $carry['view'] || $item['view'],
                         'edit' => $carry['edit'] || $item['edit'],
                     ];
-                }, ['view' => false, 'edit' => false]), // Aggregate permissions across roles
+                }, ['view' => false, 'edit' => false]),
             ];
         });
 
@@ -84,6 +80,7 @@ class AuthController extends Controller
             'city' => $employee->city,
             'state' => $employee->state,
             'zipcode' => $employee->zipcode,
+            'secret_question' => $user->secret_question,
             'stores' => $employee->stores->map(function ($store) {
                 return [
                     'id' => $store->id,
@@ -92,16 +89,49 @@ class AuthController extends Controller
                 ];
             }),
         ] : null;
-    
-        // Return the response
+
+        $tmar = TMARAchievement::where('employee_id', $employee->id)->get();
+
+        // Fetch labor schedule for the employee
+        $schedules = [];
+        if ($employee) {
+            // Extract the desired date for filtering
+            $filterDate = Carbon::now()->format('m_d_Y'); // Example: "01_22_2025"
+        
+            // Retrieve the latest labor schedule for the specific date
+            $latestLaborSchedule = LaborSchedule::where('filename', 'like', "{$filterDate}%")
+                ->orderBy('created_at', 'desc') // Ensure to get the latest file
+                ->first();
+        
+            if ($latestLaborSchedule) {
+                // Filter and collect schedules for the employee
+                $employeeSchedules = collect($latestLaborSchedule->schedule_array['schedule'])->filter(function ($item) use ($employee) {
+                    return $item['employee_id'] == $employee->id;
+                })->map(function ($item) use ($latestLaborSchedule) {
+                    // Append the filename to each schedule entry
+                    $item['filename'] = $latestLaborSchedule->filename;
+                    return $item;
+                })->values();
+        
+                // Append the schedules to the result array
+                $schedules = array_merge($schedules, $employeeSchedules->toArray());
+            }
+        }
+        
+        
+        
+
         return response()->json([
             'token_type' => 'Bearer',
             'accessToken' => $loginResponse['accessToken'],
-            'roles' => $roles, 
-            'permissions' => $permissionsData, 
+            'roles' => $roles,
+            'permissions' => $permissionsData,
             'employee_details' => $employeeData,
+            'tmar' => $tmar,
+            'schedule' => $schedules,
         ]);
     }
+
     
     
     public function logout(Request $request)

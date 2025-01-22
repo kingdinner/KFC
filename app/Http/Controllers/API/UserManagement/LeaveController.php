@@ -73,14 +73,15 @@ class LeaveController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = $request->input('per_page', 10); 
-        $search = $request->input('search');
+        $perPage = (int) $request->query('per_page', 10);
+        $search = $request->query('search', '');
 
         $leavesQuery = Leave::with([
             'employee:id,firstname,lastname,email_address',
         ]);
 
-        if ($search) {
+        // Apply search filter
+        if (!empty($search)) {
             $leavesQuery->whereHas('employee', function ($query) use ($search) {
                 $query->where('firstname', 'like', '%' . $search . '%')
                     ->orWhere('lastname', 'like', '%' . $search . '%')
@@ -88,21 +89,44 @@ class LeaveController extends Controller
             });
         }
 
+        // Paginate the results
         $leaves = $leavesQuery->paginate($perPage);
+
+        // Map data for consistent formatting
+        $leavesData = $leaves->getCollection()->map(function ($leave) {
+            return [
+                'id' => $leave->id,
+                'employee' => [
+                    'id' => $leave->employee->id,
+                    'firstname' => $leave->employee->firstname,
+                    'lastname' => $leave->employee->lastname,
+                    'email_address' => $leave->employee->email_address,
+                ],
+                'leave_type' => $leave->type,
+                'start_date' => $leave->date_applied ? $leave->date_applied : null,
+                'end_date' => $leave->date_ended ? $leave->date_ended : null,
+                'status' => $leave->status,
+                'created_at' => $leave->created_at ? $leave->created_at->toDateTimeString() : null,
+                'updated_at' => $leave->updated_at ? $leave->updated_at->toDateTimeString() : null,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'current_page' => $leaves->currentPage(),
-            'total_pages' => $leaves->lastPage(),
-            'total_records' => $leaves->total(),
-            'data' => $leaves->items(),
+            'data' => $leavesData,
             'pagination' => [
-                'per_page' => $leaves->perPage(),
+                'current_page' => $leaves->currentPage(),
+                'first_page_url' => $leaves->url(1),
+                'last_page' => $leaves->lastPage(),
+                'last_page_url' => $leaves->url($leaves->lastPage()),
                 'next_page_url' => $leaves->nextPageUrl(),
                 'prev_page_url' => $leaves->previousPageUrl(),
+                'per_page' => $leaves->perPage(),
+                'total' => $leaves->total(),
             ],
         ]);
     }
+
 
 
     /**
