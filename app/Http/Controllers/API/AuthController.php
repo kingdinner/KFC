@@ -94,33 +94,40 @@ class AuthController extends Controller
 
         // Fetch labor schedule for the employee
         $schedules = [];
-        if ($employee) {
-            // Extract the desired date for filtering
-            $filterDate = Carbon::now()->format('m_d_Y'); // Example: "01_22_2025"
-        
-            // Retrieve the latest labor schedule for the specific date
-            $latestLaborSchedule = LaborSchedule::where('filename', 'like', "{$filterDate}%")
-                ->orderBy('created_at', 'desc') // Ensure to get the latest file
-                ->first();
-        
-            if ($latestLaborSchedule) {
-                // Filter and collect schedules for the employee
-                $employeeSchedules = collect($latestLaborSchedule->schedule_array['schedule'])->filter(function ($item) use ($employee) {
-                    return $item['employee_id'] == $employee->id;
-                })->map(function ($item) use ($latestLaborSchedule) {
-                    // Append the filename to each schedule entry
-                    $item['filename'] = $latestLaborSchedule->filename;
-                    return $item;
-                })->values();
-        
-                // Append the schedules to the result array
-                $schedules = array_merge($schedules, $employeeSchedules->toArray());
-            }
-        }
-        
-        
-        
+if ($employee) {
+    // Extract the current month and year for filtering
+    $currentMonth = Carbon::now()->format('Y_m'); // Example: "2025_01"
 
+    // Retrieve the latest labor schedule for the current month
+    $latestLaborSchedule = LaborSchedule::where('filename', 'like', "{$currentMonth}%")
+        ->orderBy('created_at', 'desc') // Ensure to get the latest file
+        ->first();
+
+    if ($latestLaborSchedule) {
+        // Access the schedule from the JSON stored in `schedule_array`
+        $monthlySchedule = $latestLaborSchedule->schedule_array;
+
+        // Filter and collect schedules for the employee
+        $employeeSchedules = collect($monthlySchedule)->mapWithKeys(function ($schedule, $date) use ($employee, $latestLaborSchedule) {
+            $filteredSchedules = collect($schedule)->filter(function ($item) use ($employee) {
+                return $item['employee_id'] == $employee->id;
+            })->map(function ($item) use ($latestLaborSchedule, $date) {
+                // Add filename, schedule date, and metadata to each schedule entry
+                return array_merge($item, [
+                    'filename' => $latestLaborSchedule->filename,
+                    'schedule_date' => $date,
+                ]);
+            });
+
+            // Return the filtered schedules grouped by date
+            return [$date => $filteredSchedules->values()->toArray()];
+        })->filter(); // Remove empty dates
+
+        // Append the schedules to the result array
+        $schedules = $employeeSchedules->toArray();
+    }
+}
+        
         return response()->json([
             'token_type' => 'Bearer',
             'accessToken' => $loginResponse['accessToken'],
